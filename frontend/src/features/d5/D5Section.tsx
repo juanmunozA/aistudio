@@ -73,7 +73,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
         fixedIds.forEach((id) => {
           const actions = actionMap[id] || [];
           if (actions.length > 0) {
-            let rootText = "";
+            let rootText: string;
             if (id.startsWith('synth-')) {
               rootText = d4.syntheticCause?.text || "";
             } else {
@@ -122,7 +122,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
       const secondaryActions = d4.secondaryActions || {};
       const actions = secondaryActions[id] || [];
       if (actions.length > 0) {
-        let rootText = "";
+        let rootText: string;
         if (id.startsWith('synth-')) {
           rootText = d4.syntheticCause?.text || "";
         } else {

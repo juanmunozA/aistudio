@@ -33,16 +33,22 @@ export const handleDownloadPDF = (elementId: string, title: string) => {
         <div class="max-w-full">
           ${content}
         </div>
-        <script>
-          window.onload = () => {
-            setTimeout(() => {
-              window.print();
-              window.onafterprint = () => window.close();
-            }, 500);
-          };
-        </script>
       </body>
     </html>
   `);
   printWindow.document.close();
+  printWindowAfter(printWindow, 500, 'afterprint');
+};
+
+/**
+ * Imprime la ventana de reporte desde la ventana principal (sin scripts dentro del
+ * documento impreso, compatible con la Content Security Policy).
+ */
+export const printWindowAfter = (printWindow: Window, delayMs: number, closeMode: 'afterprint' | 'immediate') => {
+  window.setTimeout(() => {
+    printWindow.focus();
+    printWindow.print();
+    if (closeMode === 'immediate') printWindow.close();
+    else printWindow.onafterprint = () => printWindow.close();
+  }, delayMs);
 };

@@ -41,7 +41,9 @@ export const renderStyledMarkdown = (text: string) => {
         contentToProcess = flattenToMarkdown(parsed);
       }
     }
-  } catch (e) {}
+  } catch {
+    // El texto no es JSON: se procesa como markdown plano.
+  }
 
   contentToProcess = contentToProcess.replace(/([0-9]+\.\s)/g, '\n$1');
   contentToProcess = contentToProcess.replace(/(•\s)/g, '\n$1');

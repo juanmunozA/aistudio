@@ -23,7 +23,7 @@ import { SaveStatusBadge } from '../shared/components/SaveStatusBadge';
 import { TutorialModal } from '../shared/components/TutorialModal';
 import { WarningModal } from '../shared/components/WarningModal';
 import { INITIAL_STATE } from '../shared/constants/initialState';
-import { appStylesheets, handleDownloadPDF } from '../shared/utils/print';
+import { appStylesheets, handleDownloadPDF, printWindowAfter } from '../shared/utils/print';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.SETUP);
@@ -126,16 +126,11 @@ export const App: React.FC = () => {
           </head>
           <body class="p-8 bg-white text-slate-900">
             ${printElement.innerHTML}
-            <script>
-              setTimeout(() => {
-                window.print();
-                window.close();
-              }, 600);
-            </script>
           </body>
         </html>
       `);
       printWindow.document.close();
+      printWindowAfter(printWindow, 600, 'immediate');
     } else {
       window.print();
     }

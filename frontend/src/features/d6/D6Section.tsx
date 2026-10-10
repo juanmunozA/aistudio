@@ -4,7 +4,7 @@ import { ArrowPathIcon, DocumentTextIcon, QuestionMarkCircleIcon, PrinterIcon, P
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
-import { appStylesheets, handleDownloadPDF } from '../../shared/utils/print';
+import { appStylesheets, handleDownloadPDF, printWindowAfter } from '../../shared/utils/print';
 
 export const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any) => {
   const handleResetSection = () => {
@@ -116,18 +116,11 @@ export const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any
                       </div>
                     `).join('')}
                   </div>
-                  <script>
-                    window.onload = () => {
-                      setTimeout(() => {
-                        window.print();
-                        window.onafterprint = () => window.close();
-                      }, 500);
-                    };
-                  </script>
                 </body>
               </html>
             `);
             printWindow.document.close();
+            printWindowAfter(printWindow, 500, 'afterprint');
           }}
           className="px-8 py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-red-700 transition-all flex items-center gap-2 active:scale-[0.95]"
         >
