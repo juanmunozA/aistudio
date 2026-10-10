@@ -1,6 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Tab, AppState, Hypothesis, AnalysisSetup, FiveWhysAnalysis, PokaYokeSolution, ACPPlan, ActionStep, A3ReportData, ObservationValue, CostInputs, FiveWhyStep, CostBreakdown, GembaDiagnostic, EfficacyProtocol, EfficacyStep } from './types';
-import { callGemini, promptTemplates, schemas } from './services/geminiService';
+import { runAiOperation, type AiOperation } from './src/services/api/aiApi';
+import { casesApi } from './src/services/api/casesApi';
+import { documentsApi } from './src/services/api/documentsApi';
+import { useAuth } from './src/features/auth/AuthProvider';
+import { useCasePersistence, type SaveStatus } from './src/features/persistence/useCasePersistence';
 import { 
   ClipboardDocumentCheckIcon, 
   ShieldCheckIcon, 
@@ -60,43 +64,18 @@ import {
   PaperClipIcon
 } from '@heroicons/react/24/outline';
 
-import * as pdfjs from 'pdfjs-dist';
-import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 
-// Set PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Estilos compilados de la aplicación para las ventanas de impresión (sin depender de CDNs).
+const appStylesheets = () =>
+  Array.from(document.querySelectorAll<HTMLStyleElement | HTMLLinkElement>('style, link[rel="stylesheet"]'))
+    .map((node) => (node instanceof HTMLLinkElement ? `<link rel="stylesheet" href="${node.href}">` : node.outerHTML))
+    .join('\n');
 
-// Shared file text reader
+// Lector de archivos compartido: el texto lo extrae el backend.
 export const extractTextFromFile = async (file: File): Promise<string> => {
-  const extension = file.name.split('.').pop()?.toLowerCase();
   try {
-    const arrayBuffer = await file.arrayBuffer();
-
-    if (extension === 'pdf') {
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-      let text = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        text += content.items.map((item: any) => (item as any).str).join(' ') + '\n';
-      }
-      return text;
-    } else if (extension === 'docx') {
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      return result.value;
-    } else if (extension === 'xlsx' || extension === 'xls') {
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      let text = '';
-      workbook.SheetNames.forEach(sheetName => {
-        const worksheet = workbook.Sheets[sheetName];
-        text += XLSX.utils.sheet_to_txt(worksheet) + '\n';
-      });
-      return text;
-    } else {
-      const decoder = new TextDecoder();
-      return decoder.decode(arrayBuffer);
-    }
+    return await documentsApi.extractText(file);
   } catch (error) {
     console.error('Error extracting text:', error);
     try {
@@ -622,7 +601,7 @@ const handleDownloadPDF = (elementId: string, title: string) => {
     <html>
       <head>
         <title>${title}</title>
-        <script src="https://cdn.tailwindcss.com"></script>
+        ${appStylesheets()}
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
         <style>
           @page { size: A4 landscape; margin: 15mm; }
@@ -1104,11 +1083,31 @@ const WarningModal = ({ onAccept, onDecline, t, lang, onToggleLanguage }: any) =
   );
 };
 
+const SAVE_STATUS_TEXT: Record<SaveStatus, { es: string; en: string; className: string }> = {
+  loading: { es: 'Cargando', en: 'Loading', className: 'bg-slate-50 text-slate-500 border-slate-200' },
+  saved: { es: 'Guardado', en: 'Saved', className: 'bg-slate-50 text-slate-500 border-slate-200' },
+  pending: { es: 'Cambios sin guardar', en: 'Unsaved changes', className: 'bg-amber-50 text-amber-700 border-amber-100' },
+  saving: { es: 'Guardando...', en: 'Saving...', className: 'bg-blue-50 text-blue-700 border-blue-100' },
+  offline: { es: 'Sin conexión: guardado local', en: 'Offline: saved locally', className: 'bg-amber-50 text-amber-700 border-amber-100' },
+  error: { es: 'Error al guardar', en: 'Save error', className: 'bg-red-50 text-red-700 border-red-100' },
+};
+
+const SaveStatusBadge = ({ status, lang }: { status: SaveStatus; lang: 'es' | 'en' }) => {
+  const config = SAVE_STATUS_TEXT[status];
+  return (
+    <div className={`px-3 py-1 border rounded-full text-[9px] font-black uppercase tracking-widest ${config.className}`}>
+      {config[lang]}
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.SETUP);
   const [loading, setLoading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<AppState>(INITIAL_STATE);
+  const { user, logout } = useAuth();
+  const { status: saveStatus, ready: caseReady } = useCasePersistence(user!, state, setState);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
@@ -1135,61 +1134,23 @@ const App: React.FC = () => {
     return dict[key] || (translations.es as any)[key] || key;
   };
 
-  const handleGeminiCall = async (
-    key: string, 
-    system: string, 
-    user: string, 
-    temp = 0.4, 
-    schema?: any,
+  // Ejecuta una operación de IA en el backend con los datos del caso.
+  const runAi = async (
+    key: string,
+    operation: AiOperation,
+    input: unknown,
     callback?: (data: any) => void
   ) => {
     setLoading(key);
-    let finalSystem = system;
-
-    if (state.setup.type === 'Hallazgo de Auditoría, ACPM' && (state.setup.standards || []).length > 0) {
-      const standardsList = state.setup.standards.join(', ');
-      const audText = lang === 'es' 
-        ? `Adicionalmente a tu rol principal, actúa como un Auditor y Consultor experto certificado en las siguientes normas o regulaciones: ${standardsList}. Tu análisis debe ser coherente con los requisitos, el lenguaje y el marco normativo de cada una de estas entidades o estándares.`
-        : `Additionally to your primary role, act as a certified expert Auditor and Consultant for the following standards or regulations: ${standardsList}. Your analysis must be consistent with the requirements, language, and regulatory framework of each of these entities or standards.`;
-      finalSystem = `${audText} ${finalSystem}`;
-    }
-
-    if ((state.setup.type === 'Desviación de proceso' || state.setup.type === 'Solución Rápida (SR)') && state.setup.impact && (state.setup.impact || []).length > 0) {
-      const impactsList = state.setup.impact.join(', ');
-      const impText = lang === 'es'
-        ? `Adicionalmente, actúa como un consultor experto senior multidisciplinario especializado en los siguientes impactos: ${impactsList}. Considera profundamente las repercusiones críticas, legales, operativas y financieras que cada uno de estos tipos de impacto conlleva para la organización.`
-        : `Additionally, act as a multidisciplinary senior expert consultant specialized in the following impacts: ${impactsList}. Deeply consider the critical, legal, operational, and financial repercussions each of these impacts entails for the organization.`;
-      finalSystem = `${impText} ${finalSystem}`;
-    }
-
     try {
-      const data = await callGemini(finalSystem, user, temp, schema);
+      const data = await runAiOperation(operation, state, input);
       if (callback) callback(data);
     } catch (error: any) {
-      console.error("Gemini Error:", error);
+      console.error("AI Error:", error);
       alert(`${t('waitingAnalysis')} Error: ${error?.message || 'Error'}`);
     } finally {
       setLoading(null);
     }
-  };
-
-  const getProblemContext = () => {
-    const { phenomenon, fiveW2H } = state.d2;
-    if (!phenomenon && (!fiveW2H || !fiveW2H.what)) return "";
-    
-    let context = lang === 'es' ? "\n\nCONTEXTO DEL PROBLEMA DEFINIDO (D2):\n" : "\n\nDEFINED PROBLEM CONTEXT (D2):\n";
-    context += `${lang === 'es' ? 'FENÓMENO' : 'PHENOMENON'}: ${phenomenon}\n\n`;
-    context += `${lang === 'es' ? 'ANÁLISIS 5W2H' : '5W2H ANALYSIS'}:\n`;
-    if (fiveW2H) {
-      context += `- ${lang === 'es' ? 'QUÉ' : 'WHAT'}: ${fiveW2H.what}\n`;
-      context += `- ${lang === 'es' ? 'QUIÉN' : 'WHO'}: ${fiveW2H.who}\n`;
-      context += `- ${lang === 'es' ? 'DÓNDE' : 'WHERE'}: ${fiveW2H.where}\n`;
-      context += `- ${lang === 'es' ? 'CUÁNDO' : 'WHEN'}: ${fiveW2H.when}\n`;
-      context += `- ${lang === 'es' ? 'CÓMO' : 'HOW'}: ${fiveW2H.how}\n`;
-      context += `- ${lang === 'es' ? 'CUÁNTO' : 'HOW MANY'}: ${fiveW2H.how_many}\n`;
-      context += `- ${lang === 'es' ? 'POR QUÉ' : 'WHY'}: ${fiveW2H.why_is_it_a_problem}\n`;
-    }
-    return context;
   };
 
   const exportProject = () => {
@@ -1207,59 +1168,13 @@ const App: React.FC = () => {
     const fileReader = new FileReader();
     if (event.target.files && event.target.files[0]) {
       fileReader.readAsText(event.target.files[0], "UTF-8");
-      fileReader.onload = (e) => {
+      fileReader.onload = async (e) => {
         try {
           const json = JSON.parse(e.target?.result as string);
-          if (json.setup && json.d2 && json.d4) {
-            const migratedState: AppState = {
-              ...INITIAL_STATE,
-              ...json,
-              efficacy: {
-                ...INITIAL_STATE.efficacy,
-                ...(json.efficacy || {})
-              },
-              costs: {
-                ...INITIAL_STATE.costs,
-                ...json.costs,
-                inputs: { ...DEFAULT_COST_INPUTS, ...(json.costs?.inputs || {}) },
-                breakdown: json.costs?.breakdown || []
-              },
-              d4: {
-                ...INITIAL_STATE.d4,
-                ...json.d4,
-                hypotheses: json.d4?.hypotheses || [],
-                selectedHypotheses: json.d4?.selectedHypotheses || [],
-                gembaDiagnostics: json.d4?.gembaDiagnostics || [],
-                observationChecks: json.d4?.observationChecks || {},
-                experimentalConfirmedCauses: json.d4?.experimentalConfirmedCauses || [],
-                primaryCauseId: json.d4?.primaryCauseId || null,
-                secondaryActions: json.d4?.secondaryActions || {},
-                syntheticCause: json.d4?.syntheticCause || null,
-                fiveWhysHistory: (json.d4?.fiveWhysHistory || []).map((h: any) => ({ 
-                  ...h, 
-                  id: h.id || `5w-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` 
-                }))
-              },
-              d5_d6: {
-                ...INITIAL_STATE.d5_d6,
-                ...json.d5_d6,
-                acpPlans: json.d5_d6?.acpPlans || [],
-                pokaYokes: json.d5_d6?.pokaYokes || []
-              },
-              d7: {
-                a3Report: json.d7?.a3Report || json.d5_d6?.a3Report
-              },
-              d8: {
-                poe: json.d8?.poe || json.d7?.poe || "",
-                yokoTen: json.d8?.yokoTen || json.d7?.yokoTen || "",
-                quiz: json.d8?.quiz || json.d7?.quiz || []
-              }
-            };
-            setState(migratedState);
-            alert(t('successLoad'));
-          } else {
-            throw new Error("Invalid structure.");
-          }
+          // El backend valida la estructura y migra archivos de versiones anteriores.
+          const migratedState = await casesApi.normalize(json);
+          setState(migratedState);
+          alert(t('successLoad'));
         } catch (error) {
           alert(t('errorLoad'));
         }
@@ -1278,7 +1193,7 @@ const App: React.FC = () => {
         <html>
           <head>
             <title>${title} - ${state.setup.caseName || 'Reporte'}</title>
-            <script src="https://cdn.tailwindcss.com"></script>
+            ${appStylesheets()}
             <style>
               @media print {
                 .page-break { page-break-before: always; }
@@ -1414,6 +1329,16 @@ const App: React.FC = () => {
     XLSX.writeFile(wb, `Reporte_Full_8D_${state.setup.caseName || 'Proyecto'}.xlsx`);
   };
 
+  if (!caseReady) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-200">
+        <div className="flex items-center gap-3 text-slate-500 text-[11px] font-black uppercase tracking-widest">
+          <ArrowPathIcon className="w-5 h-5 animate-spin" /> {lang === 'es' ? 'Cargando caso...' : 'Loading case...'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-200">
       {!warningAccepted && (
@@ -1494,19 +1419,26 @@ const App: React.FC = () => {
                 {isFullscreen ? <ArrowsPointingInIcon className="w-5 h-5 text-slate-500 group-hover:text-blue-600" /> : <ArrowsPointingOutIcon className="w-5 h-5 text-slate-500 group-hover:text-blue-600" />}
              </button>
              <div className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> {t('wcmActive')}</div>
+             <SaveStatusBadge status={saveStatus} lang={lang} />
+             <div className="flex items-center gap-2 pl-4 border-l border-slate-200">
+               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[160px]" title={user?.username}>{user?.displayName}</span>
+               <button onClick={() => void logout()} className="px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors">
+                 {lang === 'es' ? 'Cerrar sesión' : 'Sign out'}
+               </button>
+             </div>
            </div>
         </header>
         <div className="flex-grow overflow-y-auto p-12 custom-scroll bg-slate-200/40">
           <div className="max-w-7xl mx-auto">
             {activeTab === Tab.SETUP && <SetupSection state={state} setState={setState} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D1_D2 && <D1D2Section state={state} setState={setState} handleGeminiCall={handleGeminiCall} getProblemContext={getProblemContext} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D3 && <D3Section state={state} setState={setState} handleGeminiCall={handleGeminiCall} getProblemContext={getProblemContext} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D4 && <D4Section state={state} setState={setState} handleGeminiCall={handleGeminiCall} getProblemContext={getProblemContext} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D5 && <D5Section state={state} setState={setState} handleGeminiCall={handleGeminiCall} getProblemContext={getProblemContext} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D6 && <D6Section state={state} setState={setState} handleGeminiCall={handleGeminiCall} getProblemContext={getProblemContext} loading={loading} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D7 && <D8Section state={state} setState={setState} handleGeminiCall={handleGeminiCall} loading={loading} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D8 && <D7Section state={state} setState={setState} handleGeminiCall={handleGeminiCall} loading={loading} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.EFFICACY && <EfficacySection state={state} setState={setState} handleGeminiCall={handleGeminiCall} loading={loading} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D1_D2 && <D1D2Section state={state} setState={setState} runAi={runAi} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D3 && <D3Section state={state} setState={setState} runAi={runAi} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D4 && <D4Section state={state} setState={setState} runAi={runAi} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D5 && <D5Section state={state} setState={setState} runAi={runAi} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D6 && <D6Section state={state} setState={setState} runAi={runAi} loading={loading} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D7 && <D8Section state={state} setState={setState} runAi={runAi} loading={loading} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D8 && <D7Section state={state} setState={setState} runAi={runAi} loading={loading} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.EFFICACY && <EfficacySection state={state} setState={setState} runAi={runAi} loading={loading} t={t} setBanner={setBanner} />}
           </div>
         </div>
         <div id="full-report-print" className="hidden"><FullReportTemplate state={state} t={t} /></div>
@@ -2265,7 +2197,7 @@ const SetupSection = ({ state, setState, setActiveTab, t, setBanner }: any) => {
   );
 };
 
-const D1D2Section = ({ state, setState, handleGeminiCall, getProblemContext, loading, setActiveTab, t, setBanner }: any) => {
+const D1D2Section = ({ state, setState, runAi, loading, setActiveTab, t, setBanner }: any) => {
   const [isExtracting, setIsExtracting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -2280,12 +2212,10 @@ const D1D2Section = ({ state, setState, handleGeminiCall, getProblemContext, loa
     const caseNumberMatch = state.setup.caseName.match(/^\d+/);
     const caseNumber = caseNumberMatch ? caseNumberMatch[0] : "";
 
-    handleGeminiCall(
+    runAi(
       'd5Improvement',
-      promptTemplates[state.language]?.d4Secondary || "Genera 4 acciones de mejora estructuradas para la oportunidad de mejora presentada.",
-      `OPORTUNIDAD DE MEJORA / FENÓMENO: ${phenomenonText}\n\nGenera exactamente 4 acciones concretas de mejora (ACP) para esta Oportunidad de Mejora.${getProblemContext ? getProblemContext() : ''}`,
-      0.4,
-      schemas.d4Secondary,
+      'd5Improvement',
+      { phenomenonText },
       (data: any) => {
         let actionList: string[] = [];
         if (data?.results?.[0]?.actions && Array.isArray(data.results[0].actions)) {
@@ -2352,50 +2282,6 @@ const D1D2Section = ({ state, setState, handleGeminiCall, getProblemContext, loa
     }));
   };
 
-  const extractTextFromFile = async (file: File): Promise<string> => {
-    const extension = file.name.split('.').pop()?.toLowerCase();
-    
-    try {
-      // Read the file as ArrayBuffer once to avoid multiple access permission issues
-      const arrayBuffer = await file.arrayBuffer();
-
-      if (extension === 'pdf') {
-        const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-        let text = '';
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          text += content.items.map((item: any) => (item as any).str).join(' ') + '\n';
-        }
-        return text;
-      } else if (extension === 'docx') {
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        return result.value;
-      } else if (extension === 'xlsx' || extension === 'xls') {
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        let text = '';
-        workbook.SheetNames.forEach(sheetName => {
-          const worksheet = workbook.Sheets[sheetName];
-          text += XLSX.utils.sheet_to_txt(worksheet) + '\n';
-        });
-        return text;
-      } else {
-        // For other files, convert the arrayBuffer back to text
-        const decoder = new TextDecoder();
-        return decoder.decode(arrayBuffer);
-      }
-    } catch (error) {
-      console.error('Error extracting text:', error);
-      // Fallback for permission error: try reading as text directly if not already tried
-      try {
-        return await file.text();
-      } catch (innerError) {
-        console.error('Fallback text extraction failed:', innerError);
-        return '';
-      }
-    }
-  };
-
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -2442,27 +2328,10 @@ const D1D2Section = ({ state, setState, handleGeminiCall, getProblemContext, loa
   };
 
   const handleRunD2Analysis = () => {
-    const parts: any[] = [{ text: state.d2.fieldDataInput || (state.d2.images && state.d2.images.length > 0 ? "Analyze the provided images to extract the problem description." : "Analyze the provided information.") }];
-    
-    if (state.d2.images && state.d2.images.length > 0) {
-      state.d2.images.forEach((img: string) => {
-        const [mimeInfo, base64Data] = img.split(',');
-        const mimeType = mimeInfo.match(/:(.*?);/)?.[1] || 'image/png';
-        parts.push({
-          inlineData: {
-            mimeType,
-            data: base64Data
-          }
-        });
-      });
-    }
-
-    handleGeminiCall(
+    runAi(
       'd2', 
-      promptTemplates[state.language].d2, 
-      parts, 
-      0.2, 
-      schemas.d2, 
+      'd2', 
+      { fieldDataInput: state.d2.fieldDataInput, images: state.d2.images || [] }, 
       (data) => setState((p: any) => ({ 
         ...p, 
         d2: { 
@@ -2495,9 +2364,8 @@ const D1D2Section = ({ state, setState, handleGeminiCall, getProblemContext, loa
   const updateCurrency = (currency: 'COP' | 'CRC' | 'USD') => { setState((p: AppState) => ({ ...p, costs: { ...p.costs, currency } })); };
   const handleEstimateCosts = () => {
     const inputs = state.costs?.inputs || DEFAULT_COST_INPUTS;
-    const costSummary = Object.entries(inputs).filter(([_, v]) => String(v || "").trim() !== "").map(([k, v]) => `${k}: ${v}`).join(", ");
     if (!state.d2.phenomenon) return alert(t('waitingAnalysis'));
-    handleGeminiCall('costs', promptTemplates[state.language].costs, `Datos de costos tangibles del usuario: ${costSummary || "Sin costos tangibles reportados"}. Fenómeno: ${state.d2.phenomenon}. Moneda seleccionada: ${state.costs.currency}.`, 0.3, schemas.costs, (data) => setState((p: any) => ({ ...p, costs: { ...p.costs, totalLoss: data?.total_loss_estimate || "", breakdown: data?.cost_breakdown || [] } })));
+    runAi('costs', 'costs', { inputs, phenomenon: state.d2.phenomenon, currency: state.costs.currency }, (data) => setState((p: any) => ({ ...p, costs: { ...p.costs, totalLoss: data?.total_loss_estimate || "", breakdown: data?.cost_breakdown || [] } })));
   };
   return (
     <div className="space-y-10 animate-slide-in">
@@ -2628,7 +2496,7 @@ const D1D2Section = ({ state, setState, handleGeminiCall, getProblemContext, loa
   );
 };
 
-const D3Section = ({ state, setState, handleGeminiCall, getProblemContext, loading, setActiveTab, t, setBanner }: any) => {
+const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, setBanner }: any) => {
   const handleResetSection = () => {
     setState((p: AppState) => ({
       ...p,
@@ -2639,12 +2507,10 @@ const D3Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('preview');
 
   const handleGenerateActions = () => {
-    handleGeminiCall(
+    runAi(
       'd3',
-      promptTemplates[state.language].d3,
-      `Case: ${state.setup.caseName}. Phenomenon: ${state.d2.phenomenon}.${getProblemContext()}`,
-      0.3,
-      schemas.d3,
+      'd3',
+      { caseName: state.setup.caseName, phenomenon: state.d2.phenomenon },
       (data) => {
         const now = new Date();
         const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -2677,14 +2543,10 @@ const D3Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
     const selectedActions = state.d3.correctiveActions.filter((a: any) => state.d3.selectedCorrectiveActionIds.includes(a.id));
     if (selectedActions.length === 0) return;
 
-    const actionsText = selectedActions.map(a => `${state.language === 'es' ? 'Corrección' : 'Correction'}: ${a.action}. Responsable: ${a.responsible}. Fecha: ${a.implementationDate}.`).join("\n");
-
-    handleGeminiCall(
+    runAi(
       'd3Impl',
-      promptTemplates[state.language].d3Implementation,
-      `${actionsText}${getProblemContext()}`,
-      0.4,
-      null,
+      'd3Implementation',
+      { actions: selectedActions.map(a => ({ action: a.action, responsible: a.responsible, implementationDate: a.implementationDate })) },
       (data) => {
         setState((p: any) => ({
           ...p,
@@ -2911,7 +2773,7 @@ const D3Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   );
 };
 
-const D4Section = ({ state, setState, handleGeminiCall, getProblemContext, loading, setActiveTab, t, setBanner }: any) => {
+const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, setBanner }: any) => {
   const mCategories = (mCategoriesLocal as any)[state.language] || mCategoriesLocal.es;
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('preview');
   const [confirmedDeletes, setConfirmedDeletes] = useState<Record<string, boolean>>({});
@@ -3004,19 +2866,12 @@ const D4Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   const generateIshikawa = () => {
     const existingCauses = (state.d4.hypotheses || [])
       .filter((h: Hypothesis) => (state.d4.selectedHypotheses || []).includes(h.id))
-      .map((h: Hypothesis) => `[${h.category}]: ${h.text}`)
-      .join("; ");
+      .map((h: Hypothesis) => ({ category: h.category, text: h.text }));
 
-    const promptSuffix = existingCauses 
-      ? `\n\nEXISTING CAUSES (DO NOT REPEAT THESE, GENERATE NEW AND DIFFERENT ONES): ${existingCauses}`
-      : "";
-
-    handleGeminiCall(
+    runAi(
       'd4Ishikawa', 
-      promptTemplates[state.language].d4Ishikawa, 
-      `Phenomenon: ${state.d2.phenomenon}${getProblemContext()}${promptSuffix}`, 
-      0.4, 
-      schemas.d4Ishikawa, 
+      'd4Ishikawa', 
+      { phenomenon: state.d2.phenomenon, existingCauses }, 
       (data) => {
         setState((p: any) => {
           const nextHypotheses: Hypothesis[] = [];
@@ -3086,8 +2941,7 @@ const D4Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   const generateGemba = () => {
     if ((state.d4.selectedHypotheses || []).length === 0) return alert(t('selectHypAlert'));
     const selectedList = (state.d4.hypotheses || []).filter(h => (state.d4.selectedHypotheses || []).includes(h.id));
-    const causesText = selectedList.map(h => `ID: ${h.id} - Cause: ${h.text}`).join(", ");
-    handleGeminiCall('d4Gemba', promptTemplates[state.language].d4Gemba, `Causes to audit: ${causesText}.${getProblemContext()}`, 0.3, schemas.d4Gemba, (data) => {
+    runAi('d4Gemba', 'd4Gemba', { causes: selectedList.map(h => ({ id: h.id, text: h.text })) }, (data) => {
       const initialChecks: Record<string, ObservationValue[]> = { ...(state.d4.observationChecks || {}) };
       const incomingDiagnostics = (data as any)?.diagnostics || [];
       const diagnostics = incomingDiagnostics.map((d: any) => {
@@ -3129,8 +2983,7 @@ const D4Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
 
   const generateExperimentalReport = () => {
     if (confirmedGembaHypotheses.length === 0) return alert(t('noGembaConfirmAlert'));
-    const causesText = confirmedGembaHypotheses.map(d => `- Cause: ${d.cause}`).join("\n");
-    handleGeminiCall('d4Verify', promptTemplates[state.language].d4Verify, `PHENOMENON: ${state.d2.phenomenon}\n\nLIST OF CAUSES:\n${causesText}${getProblemContext()}`, 0.4, null, (data) => {
+    runAi('d4Verify', 'd4Verify', { phenomenon: state.d2.phenomenon, causes: confirmedGembaHypotheses.map(d => d.cause) }, (data) => {
       setState((p: any) => ({ ...p, d4: { ...p.d4, verificationPlan: data || "" } }));
     });
   };
@@ -3145,10 +2998,7 @@ const D4Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
     const gembaData = state.d4.gembaDiagnostics?.find(d => d.hypothesisId === id);
     const targetText = id === state.d4.syntheticCause?.id ? state.d4.syntheticCause.text : (gembaData?.cause || "");
     const uniqueExecutionKey = `d4Whys-${id}-${Date.now()}`;
-    const gembaConclusionsText = state.d4.gembaConclusions 
-      ? `\n\nCONCLUSIONES DEL GEMBA RECOPILADAS (INFORMACIÓN ADICIONAL PARA ENFOCAR EL ANÁLISIS):\n${state.d4.gembaConclusions}` 
-      : "";
-    handleGeminiCall(uniqueExecutionKey, promptTemplates[state.language].d4Whys, `Confirmed: ${targetText}.${getProblemContext()}${gembaConclusionsText}`, 0.4, schemas.d4Whys, (data) => {
+    runAi(uniqueExecutionKey, 'd4Whys', { targetCause: targetText, gembaConclusions: state.d4.gembaConclusions }, (data) => {
       const newAnalysis: FiveWhysAnalysis = { 
         id: `5w-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         targetCause: targetText, 
@@ -3202,11 +3052,11 @@ const D4Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   const generateSyntheticCause = () => {
     const fixedIds = state.d4.fixedRootCauseIds || [];
     if (fixedIds.length === 0) return alert(state.language === 'es' ? 'Fije al menos una causa raíz.' : 'Fix at least one root cause.');
-    const causesText = fixedIds.map(id => { 
+    const rootCauses = fixedIds.map(id => { 
       const analysis = state.d4.fiveWhysHistory?.find(a => a.id === id);
       return analysis?.systemicRootCause || t('unknownCause'); 
-    }).join("; ");
-    handleGeminiCall('d4CombinedCause', promptTemplates[state.language].d4CombinedCause, `PHENOMENON: ${state.d2.phenomenon}\nROOT CAUSES: ${causesText}${getProblemContext()}`, 0.5, schemas.d4CombinedCause, (data) => {
+    });
+    runAi('d4CombinedCause', 'd4CombinedCause', { phenomenon: state.d2.phenomenon, rootCauses }, (data) => {
       setState((p: AppState) => ({ ...p, d4: { ...p.d4, syntheticCause: { id: `synth-${Date.now()}`, text: (data as any)?.synthetic_cause || t('failureModeDefault') } } }));
     });
   };
@@ -3225,13 +3075,13 @@ const D4Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
     const fixedIds = [...(state.d4.fixedRootCauseIds || [])];
     if (fixedIds.length === 0) return alert(state.language === 'es' ? 'Fije al menos una causa raíz.' : 'Fix at least one root cause.');
     
-    const inputPayload = fixedIds.map(id => {
+    const causes = fixedIds.map(id => {
       if (id.startsWith('synth-')) return { id, text: state.d4.syntheticCause?.text };
       const analysis = state.d4.fiveWhysHistory.find(a => a.id === id);
       return { id, text: analysis?.systemicRootCause };
-    }).map(item => `hypothesisId: ${item.id} | cause: ${item.text}`).join("\n");
+    });
     
-    handleGeminiCall('d4Secondary', promptTemplates[state.language].d4Secondary, `PHENOMENON: ${state.d2.phenomenon}\n\nCAUSES LIST:\n${inputPayload}${getProblemContext()}`, 0.4, schemas.d4Secondary, (data) => {
+    runAi('d4Secondary', 'd4Secondary', { phenomenon: state.d2.phenomenon, causes }, (data) => {
       const actionMap: Record<string, ActionStep[]> = { ...(state.d4.secondaryActions || {}) };
       const results = (data as any)?.results || [];
       results.forEach((r: any) => { 
@@ -3726,7 +3576,7 @@ const D4Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   );
 };
 
-const D5Section = ({ state, setState, handleGeminiCall, getProblemContext, loading, setActiveTab, t, setBanner }: any) => {
+const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, setBanner }: any) => {
   const setD5Step = (s: number) => setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, step: s } }));
 
   const handleResetSection = () => {
@@ -3755,13 +3605,13 @@ const D5Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
     });
 
     if (missingActions.length > 0 && isManualClick) {
-      const inputPayload = fixedIds.map(id => {
+      const causes = fixedIds.map(id => {
         if (id.startsWith('synth-')) return { id, text: d4.syntheticCause?.text || "" };
         const analysis = d4.fiveWhysHistory?.find(a => a.id === id);
         return { id, text: analysis?.systemicRootCause || "" };
-      }).map(item => `hypothesisId: ${item.id} | cause: ${item.text}`).join("\n");
+      });
 
-      handleGeminiCall('d5Secondary', promptTemplates[state.language].d4Secondary, `PHENOMENON: ${state.d2.phenomenon}\n\nCAUSES LIST:\n${inputPayload}${getProblemContext()}`, 0.4, schemas.d4Secondary, (data: any) => {
+      runAi('d5Secondary', 'd4Secondary', { phenomenon: state.d2.phenomenon, causes }, (data: any) => {
         const actionMap: Record<string, ActionStep[]> = { ...(d4.secondaryActions || {}) };
         const results = data?.results || [];
         results.forEach((r: any) => { 
@@ -3906,18 +3756,15 @@ const D5Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
 
     const fixedActions = existingActions.filter(a => a.isFixed);
     const unfixedCount = Math.max(1, 4 - fixedActions.length);
-    const existingActionTexts = existingActions.map(a => a.action).join(" | ");
 
     const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const caseNumberMatch = state.setup.caseName.match(/^\d+/);
     const caseNumber = caseNumberMatch ? caseNumberMatch[0] : "";
 
-    handleGeminiCall(
+    runAi(
       'd5RefreshImprovement',
-      promptTemplates[state.language]?.d4Secondary || "Genera acciones de mejora estructuradas para la oportunidad de mejora.",
-      `OPORTUNIDAD DE MEJORA / FENÓMENO: ${phenomenonText}\n\nACCIONES EXISTENTES (NO REPETIR): ${existingActionTexts}\n\nGenera exactamente ${unfixedCount} acciones concretas de mejora NUEVAS y DIFERENTES a las existentes.${getProblemContext ? getProblemContext() : ''}`,
-      0.5,
-      schemas.d4Secondary,
+      'd5RefreshImprovement',
+      { phenomenonText, existingActions: existingActions.map(a => a.action), count: unfixedCount },
       (data: any) => {
         let actionList: string[] = [];
         if (data?.results?.[0]?.actions && Array.isArray(data.results[0].actions)) {
@@ -3986,7 +3833,7 @@ const D5Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   };
 
   const generateImplementationGuide = (action: ActionStep) => {
-    handleGeminiCall(`d5Impl-${action.id}`, promptTemplates[state.language].d5Implementation, `ACTION: ${action.action}\nRESPONSIBLE: ${action.responsible}\nTIMEFRAME: ${action.timeframe}${getProblemContext()}`, 0.4, null, (data) => {
+    runAi(`d5Impl-${action.id}`, 'd5Implementation', { action: action.action, responsible: action.responsible, timeframe: action.timeframe }, (data) => {
       setState((p: AppState) => ({
         ...p,
         d5_d6: {
@@ -4355,7 +4202,7 @@ const D5Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   );
 };
 
-const D6Section = ({ state, setState, handleGeminiCall, getProblemContext, loading, t, setBanner }: any) => {
+const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any) => {
   const handleResetSection = () => {
     setState((p: AppState) => ({
       ...p,
@@ -4371,7 +4218,7 @@ const D6Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
     const history = state.d4.fiveWhysHistory || [];
     if (history.length === 0) return alert(t('rcaRequired'));
     const rootCause = history[history.length - 1].systemicRootCause;
-    handleGeminiCall('d5Poka', promptTemplates[state.language].d5Poka, `Root Cause: ${rootCause}${getProblemContext()}`, 0.5, schemas.d5Poka, (data) => {
+    runAi('d5Poka', 'd5Poka', { rootCause }, (data) => {
       setState((p: AppState) => {
         const confirmedPoka = (p.d5_d6.pokaYokes || []).filter(py => py.isConfirmed);
         const newSolutions = (data as any)?.solutions.map((s: any) => ({ 
@@ -4391,7 +4238,7 @@ const D6Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   };
   const getPokaDetails = (id: string, solution: PokaYokeSolution) => {
     if (solution.details) return setExpandedId(expandedId === id ? null : id);
-    handleGeminiCall(`pokaDetail-${id}`, promptTemplates[state.language].pokaDetail, `Solution: ${solution.description}.`, 0.4, null, (data) => {
+    runAi(`pokaDetail-${id}`, 'pokaDetail', { description: solution.description }, (data) => {
       setState((p: AppState) => { const nextPoka = (p.d5_d6.pokaYokes || []).map(item => item.id === id ? { ...item, details: (data as string) || "" } : item); return { ...p, d5_d6: { ...p.d5_d6, pokaYokes: nextPoka } }; });
       setExpandedId(id);
     });
@@ -4433,7 +4280,7 @@ const D6Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
               <html>
                 <head>
                   <title>Guia_Tecnica_PokaYoke_Completa</title>
-                  <script src="https://cdn.tailwindcss.com"></script>
+                  ${appStylesheets()}
                   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
                   <style>
                     @page { size: A4 landscape; margin: 15mm; }
@@ -4540,7 +4387,7 @@ const D6Section = ({ state, setState, handleGeminiCall, getProblemContext, loadi
   );
 };
 
-const D7Section = ({ state, setState, handleGeminiCall, loading, t, setBanner }: any) => {
+const D7Section = ({ state, setState, runAi, loading, t, setBanner }: any) => {
   const handleResetSection = () => {
     setState((p: AppState) => ({
       ...p,
@@ -4552,49 +4399,32 @@ const D7Section = ({ state, setState, handleGeminiCall, loading, t, setBanner }:
 
   const generateA3 = () => {
     const history = state.d4.fiveWhysHistory || [];
-    const rootCauses = history.map(h => h.systemicRootCause).join("; ");
-    
-    // D3 Selected Actions
     const d3Selected = state.d3.correctiveActions.filter(a => state.d3.selectedCorrectiveActionIds.includes(a.id));
-    const d3ActionText = state.d3.isNotApplicable
-      ? (state.language === 'es' ? 'No aplica para este caso' : 'Not applicable for this case')
-      : d3Selected.length > 0 
-        ? d3Selected.map(a => `${state.language === 'es' ? 'D3 CORRECCIÓN' : 'D3 CORRECTION'}: ${a.action} | RESP: ${a.responsible} | DATE: ${a.implementationDate}`).join('\n')
-        : "None";
 
-    // D5 ACP Actions
-    const acpActionsFormatted = (state.d5_d6.acpPlans || []).map(plan => { 
-      const fixed = plan.actions.filter(a => a.isFixed); 
-      if (fixed.length === 0) return null; 
-      return `${plan.type === 'primary' ? 'MASTER' : 'SECONDARY'}: ${plan.rootCause}\n${fixed.map(a => `- [ID: ${a.actionId || 'N/A'}] ${a.action} (RESP: ${a.responsible}, DATE: ${a.timeframe})`).join('\n')}`; 
-    }).filter(Boolean).join('\n\n');
-
-    // D6 Poka Yokes
-    const pokaYokesFormatted = state.d5_d6.pokaYokes.filter(p => p.isConfirmed).map(p => `- ${p.description} (${p.level})`).join('\n');
-    
-    // D8 Info
-    const poeName = state.d8.poe ? "POE Implementado" : "TBD";
-    const yokoTenSummary = state.d8.yokoTen || "TBD";
-
-    // Efficacy Validation Info
-    const efficacyFormatted = state.efficacy.protocols.map(p => `- [ID: ${p.id}] Action: ${p.action} | Method: ${p.verificationMethod} | Responsible: ${p.verificationResponsible} | Date: ${p.verificationDate} | Effective: ${p.isEffective ? 'SI' : 'NO'}`).join('\n');
-
-    const fullContext = `
-      PHENOMENON: ${state.d2.phenomenon}
-      FINANCIAL: ${state.costs.totalLoss}
-      RISKS: ${state.d2.analysis}
-      CAUSES: ${rootCauses}
-      D3_CORRECCION: ${d3ActionText}
-      ACP_ACTIONS: ${acpActionsFormatted}
-      POKAS: ${pokaYokesFormatted}
-      POE_NAME: ${poeName}
-      YOKOTEN: ${yokoTenSummary}
-      EFFICACY_VALIDATION: ${efficacyFormatted}
-      RESPONSIBLE: ${state.setup.responsible}
-      DATE: ${new Date().toLocaleDateString()}
-    `;
-    
-    handleGeminiCall('d5A3', promptTemplates[state.language].d5A3, fullContext, 0.4, schemas.d5A3, (data) => setState((p: AppState) => ({ ...p, d7: { a3Report: (data as any) } })));
+    runAi('d5A3', 'd5A3', {
+      phenomenon: state.d2.phenomenon,
+      totalLoss: state.costs.totalLoss,
+      risks: state.d2.analysis,
+      rootCauses: history.map(h => h.systemicRootCause),
+      d3: {
+        isNotApplicable: !!state.d3.isNotApplicable,
+        selectedActions: d3Selected.map(a => ({ action: a.action, responsible: a.responsible, implementationDate: a.implementationDate })),
+      },
+      acpPlans: state.d5_d6.acpPlans || [],
+      pokaYokes: (state.d5_d6.pokaYokes || []).map(p => ({ description: p.description, level: p.level, isConfirmed: p.isConfirmed })),
+      poe: state.d8.poe,
+      yokoTen: state.d8.yokoTen,
+      efficacyProtocols: state.efficacy.protocols.map(p => ({
+        id: p.id,
+        action: p.action,
+        verificationMethod: p.verificationMethod,
+        verificationResponsible: p.verificationResponsible,
+        verificationDate: p.verificationDate,
+        isEffective: p.isEffective,
+      })),
+      responsible: state.setup.responsible,
+      generatedOn: new Date().toLocaleDateString(),
+    }, (data) => setState((p: AppState) => ({ ...p, d7: { a3Report: (data as any) } })));
   };
 
   const updateA3Field = (field: keyof A3ReportData, val: any) => {
@@ -4858,7 +4688,7 @@ const D7Section = ({ state, setState, handleGeminiCall, loading, t, setBanner }:
   );
 };
 
-const D8Section = ({ state, setState, handleGeminiCall, loading, t, setBanner }: any) => {
+const D8Section = ({ state, setState, runAi, loading, t, setBanner }: any) => {
   const handleResetSection = () => {
     setState((p: AppState) => ({
       ...p,
@@ -4873,18 +4703,17 @@ const D8Section = ({ state, setState, handleGeminiCall, loading, t, setBanner }:
   const [score, setScore] = useState<number | null>(null);
 
   const generatePOE = () => { 
-    const actions = (state.d5_d6.acpPlans || []).flatMap((p: ACPPlan) => p.actions || []).filter(a => a.isFixed).map(a => `[ID: ${a.actionId || 'N/A'}] ${a.action}`).join("; "); 
-    handleGeminiCall('d7Poe', promptTemplates[state.language].d7Poe, `ACTIONS: ${actions}`, 0.4, null, (data) => setState((p: AppState) => ({ ...p, d8: { ...(p.d8 || {}), poe: (data as string) || "" } }))); 
+    runAi('d7Poe', 'd7Poe', { acpPlans: state.d5_d6.acpPlans || [] }, (data) => setState((p: AppState) => ({ ...p, d8: { ...(p.d8 || {}), poe: (data as string) || "" } }))); 
   };
   
   const generateYokoTen = () => { 
     const history = state.d4.fiveWhysHistory || []; 
-    handleGeminiCall('d7YokoTen', promptTemplates[state.language].d7YokoTen, `PHENOMENON: ${state.d2.phenomenon}\nROOT: ${history.map(h => h.systemicRootCause).join("; ")}`, 0.4, null, (data) => setState((p: AppState) => ({ ...p, d8: { ...(p.d8 || {}), yokoTen: (data as string) || "" } }))); 
+    runAi('d7YokoTen', 'd7YokoTen', { phenomenon: state.d2.phenomenon, rootCauses: history.map(h => h.systemicRootCause) }, (data) => setState((p: AppState) => ({ ...p, d8: { ...(p.d8 || {}), yokoTen: (data as string) || "" } }))); 
   };
   
   const generateQuiz = () => { 
     if (!state.d8.poe) return alert("POE first."); 
-    handleGeminiCall('d7Quiz', promptTemplates[state.language].d7Quiz, `POE: ${state.d8.poe}`, 0.3, schemas.d7Quiz, (data) => { 
+    runAi('d7Quiz', 'd7Quiz', { poe: state.d8.poe }, (data) => { 
       setState((p: AppState) => ({ ...p, d8: { ...(p.d8 || {}), quiz: (data as any)?.questions || [] } })); 
       setScore(null); 
       setAnswers({}); 
@@ -5010,7 +4839,7 @@ const D8Section = ({ state, setState, handleGeminiCall, loading, t, setBanner }:
   );
 };
 
-const EfficacySection = ({ state, setState, handleGeminiCall, loading, t, setBanner }: any) => {
+const EfficacySection = ({ state, setState, runAi, loading, t, setBanner }: any) => {
   const handleResetSection = () => {
     setState((p: AppState) => ({
       ...p,
@@ -5027,7 +4856,7 @@ const EfficacySection = ({ state, setState, handleGeminiCall, loading, t, setBan
     const allIds = fixedActions.map((a: any) => a.actionId || 'N/A').filter(Boolean).join('\n');
     const today = new Date().toISOString().split('T')[0];
     
-    handleGeminiCall('efficacy', promptTemplates[state.language].efficacyValidation, `CAUSAS RAIZ:\n${rootCausesText}\n\nACCIONES GENERADAS EN D5:\n${actionsText}`, 0.4, schemas.efficacyValidation, (data) => {
+    runAi('efficacy', 'efficacyValidation', { acpPlans: state.d5_d6.acpPlans || [], rootCauses: (state.d4.fiveWhysHistory || []).map((h: any) => h.systemicRootCause) }, (data) => {
       let rawProtocols = (data as any).protocols || [];
       if (!Array.isArray(rawProtocols) || rawProtocols.length === 0) {
         rawProtocols = [data];
@@ -5086,7 +4915,7 @@ const EfficacySection = ({ state, setState, handleGeminiCall, loading, t, setBan
     // If already generated, don't call again
     if (state.efficacy.verificationGuides && state.efficacy.verificationGuides[protocol.id]) return;
 
-    handleGeminiCall(`guide-${protocol.id}`, promptTemplates[state.language].verificationGuide, `Método de Verificación: ${protocol.verificationMethod}`, 0.5, null, (data) => {
+    runAi(`guide-${protocol.id}`, 'verificationGuide', { verificationMethod: protocol.verificationMethod }, (data) => {
       setState((prev: AppState) => ({
         ...prev,
         efficacy: {
