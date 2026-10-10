@@ -5,13 +5,15 @@ import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingText
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
+import { caseActions, useCaseState } from '../../store/caseStore';
+import type { SectionProps } from '../sectionProps';
+import { useAiRunner } from '../ai/useAiRunner';
 
-export const D8Section = ({ state, setState, runAi, loading, t, setBanner }: any) => {
+export const D8Section = ({ t, setBanner }: SectionProps) => {
+  const state = useCaseState();
+  const { runAi, loading } = useAiRunner();
   const handleResetSection = () => {
-    setState((p: AppState) => ({
-      ...p,
-      d8: INITIAL_STATE.d8
-    }));
+    caseActions.updateSection('d8', (current) => INITIAL_STATE.d8);
   };
 
   const [activeSubTab, setActiveSubTab] = useState<'standard' | 'yokoten' | 'quiz'>('standard');
@@ -21,18 +23,18 @@ export const D8Section = ({ state, setState, runAi, loading, t, setBanner }: any
   const [score, setScore] = useState<number | null>(null);
 
   const generatePOE = () => { 
-    runAi('d7Poe', 'd7Poe', { acpPlans: state.d5_d6.acpPlans || [] }, (data) => setState((p: AppState) => ({ ...p, d8: { ...(p.d8 || {}), poe: (data as string) || "" } }))); 
+    runAi('d7Poe', 'd7Poe', { acpPlans: state.d5_d6.acpPlans || [] }, (data) => caseActions.updateSection('d8', (current) => ({ ...current, poe: (data as string) || "" }))); 
   };
   
   const generateYokoTen = () => { 
     const history = state.d4.fiveWhysHistory || []; 
-    runAi('d7YokoTen', 'd7YokoTen', { phenomenon: state.d2.phenomenon, rootCauses: history.map(h => h.systemicRootCause) }, (data) => setState((p: AppState) => ({ ...p, d8: { ...(p.d8 || {}), yokoTen: (data as string) || "" } }))); 
+    runAi('d7YokoTen', 'd7YokoTen', { phenomenon: state.d2.phenomenon, rootCauses: history.map(h => h.systemicRootCause) }, (data) => caseActions.updateSection('d8', (current) => ({ ...current, yokoTen: (data as string) || "" }))); 
   };
   
   const generateQuiz = () => { 
     if (!state.d8.poe) return alert("POE first."); 
     runAi('d7Quiz', 'd7Quiz', { poe: state.d8.poe }, (data) => { 
-      setState((p: AppState) => ({ ...p, d8: { ...(p.d8 || {}), quiz: (data as any)?.questions || [] } })); 
+      caseActions.updateSection('d8', (current) => ({ ...current, quiz: (data as any)?.questions || [] })); 
       setScore(null); 
       setAnswers({}); 
     }); 
@@ -108,7 +110,7 @@ export const D8Section = ({ state, setState, runAi, loading, t, setBanner }: any
               {poeViewMode === 'edit' ? (
                 <AutoExpandingTextarea 
                   value={state.d8.poe} 
-                  onChange={(e: any) => setState((p: AppState) => ({ ...p, d8: { ...p.d8, poe: e.target.value } }))}
+                  onChange={(e: any) => caseActions.updateSection('d8', (current) => ({ ...current, poe: e.target.value }))}
                   className="bg-slate-50 border border-slate-200 rounded-3xl p-8 text-sm font-medium focus:ring-0 outline-none transition-all leading-relaxed"
                   placeholder="Escriba el procedimiento operativo estándar aquí..."
                 />
@@ -136,7 +138,7 @@ export const D8Section = ({ state, setState, runAi, loading, t, setBanner }: any
               {yokoViewMode === 'edit' ? (
                 <AutoExpandingTextarea 
                   value={state.d8.yokoTen} 
-                  onChange={(e: any) => setState((p: AppState) => ({ ...p, d8: { ...p.d8, yokoTen: e.target.value } }))}
+                  onChange={(e: any) => caseActions.updateSection('d8', (current) => ({ ...current, yokoTen: e.target.value }))}
                   className="bg-slate-50 border border-slate-200 rounded-3xl p-8 text-sm font-medium focus:ring-0 outline-none transition-all leading-relaxed"
                   placeholder="Escriba el informe de despliegue horizontal aquí..."
                 />

@@ -5,16 +5,18 @@ import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
 import { appStylesheets, handleDownloadPDF, printWindowAfter } from '../../shared/utils/print';
+import { caseActions, useCaseState } from '../../store/caseStore';
+import type { SectionProps } from '../sectionProps';
+import { useAiRunner } from '../ai/useAiRunner';
 
-export const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any) => {
+export const D6Section = ({ t, setBanner }: SectionProps) => {
+  const state = useCaseState();
+  const { runAi, loading } = useAiRunner();
   const handleResetSection = () => {
-    setState((p: AppState) => ({
-      ...p,
-      d5_d6: {
-        ...p.d5_d6,
+    caseActions.updateSection('d5_d6', (current) => ({
+        ...current,
         pokaYokes: INITIAL_STATE.d5_d6.pokaYokes
-      }
-    }));
+      }));
   };
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any
     if (history.length === 0) return alert(t('rcaRequired'));
     const rootCause = history[history.length - 1].systemicRootCause;
     runAi('d5Poka', 'd5Poka', { rootCause }, (data) => {
-      setState((p: AppState) => {
+      caseActions.updateCase((p: AppState) => {
         const confirmedPoka = (p.d5_d6.pokaYokes || []).filter(py => py.isConfirmed);
         const newSolutions = (data as any)?.solutions.map((s: any) => ({ 
           ...s, 
@@ -33,7 +35,7 @@ export const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any
         return { 
           ...p, 
           d5_d6: { 
-            ...(p.d5_d6 || {}), 
+            ...p.d5_d6, 
             pokaYokes: [...confirmedPoka, ...newSolutions] 
           } 
         };
@@ -43,7 +45,7 @@ export const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any
   const getPokaDetails = (id: string, solution: PokaYokeSolution) => {
     if (solution.details) return setExpandedId(expandedId === id ? null : id);
     runAi(`pokaDetail-${id}`, 'pokaDetail', { description: solution.description }, (data) => {
-      setState((p: AppState) => { const nextPoka = (p.d5_d6.pokaYokes || []).map(item => item.id === id ? { ...item, details: (data as string) || "" } : item); return { ...p, d5_d6: { ...p.d5_d6, pokaYokes: nextPoka } }; });
+      caseActions.updateCase((p: AppState) => { const nextPoka = (p.d5_d6.pokaYokes || []).map(item => item.id === id ? { ...item, details: (data as string) || "" } : item); return { ...p, d5_d6: { ...p.d5_d6, pokaYokes: nextPoka } }; });
       setExpandedId(id);
     });
   };
@@ -139,7 +141,7 @@ export const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any
                 <button 
                   onClick={() => { 
                     const nextPoka = (state.d5_d6.pokaYokes || []).map(item => item.id === poka.id ? { ...item, isConfirmed: !item.isConfirmed } : item); 
-                    setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, pokaYokes: nextPoka } })); 
+                    caseActions.updateSection('d5_d6', (current) => ({ ...current, pokaYokes: nextPoka })); 
                   }} 
                   className={`p-2 rounded-lg transition-all shadow-sm ${poka.isConfirmed ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 hover:text-blue-600'}`}
                 >

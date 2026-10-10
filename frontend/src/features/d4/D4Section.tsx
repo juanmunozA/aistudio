@@ -9,8 +9,13 @@ import { mCategoriesLocal } from '../../shared/constants/catalogs';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
 import { extractTextFromFile } from '../../shared/utils/files';
 import { handleDownloadPDF } from '../../shared/utils/print';
+import { caseActions, useCaseState } from '../../store/caseStore';
+import type { SectionProps } from '../sectionProps';
+import { useAiRunner } from '../ai/useAiRunner';
 
-export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, setBanner }: any) => {
+export const D4Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
+  const state = useCaseState();
+  const { runAi, loading } = useAiRunner();
   const mCategories = (mCategoriesLocal as any)[state.language] || mCategoriesLocal.es;
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('preview');
   const [confirmedDeletes, setConfirmedDeletes] = useState<Record<string, boolean>>({});
@@ -32,13 +37,10 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
     }
 
     if (extractedText) {
-      setState((p: AppState) => ({
-        ...p,
-        d4: { 
-          ...p.d4, 
-          gembaConclusions: (p.d4.gembaConclusions ? p.d4.gembaConclusions + '\n\n' : '') + extractedText 
-        }
-      }));
+      caseActions.updateSection('d4', (current) => ({ 
+          ...current, 
+          gembaConclusions: (current.gembaConclusions ? current.gembaConclusions + '\n\n' : '') + extractedText 
+        }));
     }
 
     setIsExtractingGemba(false);
@@ -46,37 +48,28 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
   };
 
   const handleResetSection = () => {
-    setState((p: AppState) => ({
-      ...p,
-      d4: INITIAL_STATE.d4
-    }));
+    caseActions.updateSection('d4', (current) => INITIAL_STATE.d4);
   };
 
   const handleDeleteConfirmedCause = (id: string) => {
-    setState((p: AppState) => ({
-      ...p,
-      d4: {
-        ...p.d4,
-        experimentalConfirmedCauses: (p.d4.experimentalConfirmedCauses || []).filter(cid => cid !== id)
-      }
-    }));
+    caseActions.updateSection('d4', (current) => ({
+        ...current,
+        experimentalConfirmedCauses: (current.experimentalConfirmedCauses || []).filter(cid => cid !== id)
+      }));
   };
 
   const handleDeleteAllAnalyses = () => {
-    setState((p: AppState) => ({
-      ...p,
-      d4: {
-        ...p.d4,
+    caseActions.updateSection('d4', (current) => ({
+        ...current,
         fiveWhysHistory: [],
         fixedRootCauseIds: [],
         secondaryActions: {}
-      }
-    }));
+      }));
   };
 
   const handleDeleteAnalysis = (idToDelete: string) => {
     if (!idToDelete) return;
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       const nextHistory = (p.d4.fiveWhysHistory || []).filter(item => item.id !== idToDelete);
       const nextFixedIds = (p.d4.fixedRootCauseIds || []).filter(id => id !== idToDelete);
       const nextSecondaryActions = { ...(p.d4.secondaryActions || {}) };
@@ -95,7 +88,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
   };
 
   const setStep = (step: number) => {
-    setState((p: any) => ({ ...p, d4: { ...p.d4, step } }));
+    caseActions.updateSection('d4', (current) => ({ ...current, step }));
     const container = document.getElementById('main-content-scroll');
     if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -110,7 +103,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
       'd4Ishikawa', 
       { phenomenon: state.d2.phenomenon, existingCauses }, 
       (data) => {
-        setState((p: any) => {
+        caseActions.updateCase((p: any) => {
           const nextHypotheses: Hypothesis[] = [];
           const incomingHypotheses = (data as any)?.hypotheses || [];
           const currentD4 = p.d4 || INITIAL_STATE.d4;
@@ -186,7 +179,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
         if (!initialChecks[d.hypothesisId]) { initialChecks[d.hypothesisId] = questions.map(() => null); }
         return { hypothesisId: d.hypothesisId || `diag-${Date.now()}`, cause: d.cause || "", questions: questions };
       });
-      setState((p: any) => ({ ...p, d4: { ...p.d4, gembaDiagnostics: diagnostics, observationChecks: initialChecks, step: 2 } }));
+      caseActions.updateSection('d4', (current) => ({ ...current, gembaDiagnostics: diagnostics, observationChecks: initialChecks, step: 2 }));
     });
   };
 
@@ -221,14 +214,14 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
   const generateExperimentalReport = () => {
     if (confirmedGembaHypotheses.length === 0) return alert(t('noGembaConfirmAlert'));
     runAi('d4Verify', 'd4Verify', { phenomenon: state.d2.phenomenon, causes: confirmedGembaHypotheses.map(d => d.cause) }, (data) => {
-      setState((p: any) => ({ ...p, d4: { ...p.d4, verificationPlan: data || "" } }));
+      caseActions.updateSection('d4', (current) => ({ ...current, verificationPlan: data || "" }));
     });
   };
 
   const toggleHypothesis = (id: string) => {
     const current = state.d4.selectedHypotheses || [];
     const next = current.includes(id) ? current.filter((t: string) => t !== id) : [...current, id];
-    setState((p: any) => ({ ...p, d4: { ...p.d4, selectedHypotheses: next } }));
+    caseActions.updateSection('d4', (current) => ({ ...current, selectedHypotheses: next }));
   };
 
   const run5Whys = (id: string) => {
@@ -242,12 +235,12 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
         whys: (data as any)?.whys || [], 
         systemicRootCause: (data as any)?.causa_raiz_sistemica || "" 
       };
-      setState((p: any) => ({ ...p, d4: { ...p.d4, fiveWhysHistory: [...(p.d4.fiveWhysHistory || []), newAnalysis], finalCause: targetText, step: 4 } }));
+      caseActions.updateSection('d4', (current) => ({ ...current, fiveWhysHistory: [...(current.fiveWhysHistory || []), newAnalysis], finalCause: targetText, step: 4 }));
     });
   };
 
   const updateWhyAnswer = (analysisId: string, whyIdx: number, val: string) => {
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       const nextHistory = p.d4.fiveWhysHistory.map(analysis => {
         if (analysis.id === analysisId) {
           const nextWhys = [...analysis.whys];
@@ -261,7 +254,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
   };
 
   const updateWhyStep = (analysisId: string, whyIdx: number, val: string) => {
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       const nextHistory = p.d4.fiveWhysHistory.map(analysis => {
         if (analysis.id === analysisId) {
           const nextWhys = [...analysis.whys];
@@ -275,7 +268,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
   };
 
   const updateSystemicRootCause = (analysisId: string, val: string) => {
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       const nextHistory = p.d4.fiveWhysHistory.map(analysis => {
         if (analysis.id === analysisId) {
           return { ...analysis, systemicRootCause: val };
@@ -294,12 +287,12 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
       return analysis?.systemicRootCause || t('unknownCause'); 
     });
     runAi('d4CombinedCause', 'd4CombinedCause', { phenomenon: state.d2.phenomenon, rootCauses }, (data) => {
-      setState((p: AppState) => ({ ...p, d4: { ...p.d4, syntheticCause: { id: `synth-${Date.now()}`, text: (data as any)?.synthetic_cause || t('failureModeDefault') } } }));
+      caseActions.updateSection('d4', (current) => ({ ...current, syntheticCause: { id: `synth-${Date.now()}`, text: (data as any)?.synthetic_cause || t('failureModeDefault') } }));
     });
   };
 
   const toggleFixedRootCause = (analysisId: string) => {
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       const current = p.d4.fixedRootCauseIds || [];
       const next = current.includes(analysisId) 
         ? current.filter(id => id !== analysisId) 
@@ -340,7 +333,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
           } 
         } 
       });
-      setState((p: AppState) => ({ ...p, d4: { ...p.d4, secondaryActions: actionMap } }));
+      caseActions.updateSection('d4', (current) => ({ ...current, secondaryActions: actionMap }));
       alert(t('actionsMaterialized'));
     });
   };
@@ -366,7 +359,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
         <ResetButton onReset={handleResetSection} t={t} />
       </div>
       <div className="flex flex-wrap gap-4 mb-6">{[1, 2, 3, 4, 5].map(s => (<button key={s} onClick={() => setStep(s)} className={`px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest border-2 transition-all active:scale-[0.98] ${state.d4.step === s ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}>{s === 1 ? `1. Ishikawa` : s === 2 ? `2. GEMBA` : s === 3 ? `3. 5 Whys` : s === 4 ? `4. ${t('rootCauseTitle')}` : `5. ${t('causesAndActionsTitle')}`}</button>))}</div>
-      {state.d4.step === 1 && (<div className="industrial-card rounded-[2rem] p-8 h-auto flex flex-col"><div className="flex items-center justify-between mb-8"><h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">{t('ishikawaTitle')} <button onClick={() => setBanner({ title: t('ishikawaTitle'), content: t('ishikawaBanner') })} className="transition-all transform hover:scale-125"><QuestionMarkCircleIcon className="w-7 h-7 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" /></button></h3><button onClick={generateIshikawa} className="px-6 py-2 bg-blue-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-blue-700 transition-all shadow-md active:scale-[0.95]">{t('genIshikawa')}</button></div><div className="space-y-12 h-auto">{mCategories.map((cat: string) => { const catHypotheses = (state.d4.hypotheses || []).filter((h: Hypothesis) => h.category === cat); return (<div key={cat} className="space-y-4 h-auto"><div className="flex items-center gap-3 border-b border-slate-100 pb-2"><Square2StackIcon className="w-5 h-5 text-slate-400" /><h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">{cat}</h4></div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-auto">{catHypotheses.length > 0 ? (catHypotheses.map((h: Hypothesis) => (<div key={h.id} onClick={() => toggleHypothesis(h.id)} className={`p-6 rounded-3xl border-2 cursor-pointer transition-all flex flex-col justify-between active:scale-[0.98] h-auto ${state.d4.selectedHypotheses?.includes(h.id) ? 'border-blue-600 bg-blue-50 shadow-md ring-2 ring-blue-100' : 'border-slate-50 bg-white hover:border-blue-200'}`}><AutoExpandingTextarea value={h.text} onChange={(e: any) => { const nextH = [...(state.d4.hypotheses || [])]; const found = nextH.find(item => item.id === h.id); if (found) found.text = e.target.value; setState((p: any) => ({ ...p, d4: { ...p.d4, hypotheses: nextH } })); }} onClick={(e: any) => e.stopPropagation()} className="bg-transparent text-base font-bold text-slate-700 leading-snug outline-none focus:ring-1 focus:ring-blue-100 rounded p-1" /><div className="mt-4 flex justify-end">{state.d4.selectedHypotheses?.includes(h.id) ? (<span className="px-2 py-1 bg-blue-600 text-white text-[8px] font-black uppercase rounded-lg shadow-sm">{t('fix')}</span>) : (<span className="px-2 py-1 bg-slate-100 text-slate-400 text-[8px] font-black uppercase rounded-lg">{t('fix')}</span>)}</div></div>))) : (<div className="col-span-full py-10 text-center border-2 border-dashed border-slate-100 rounded-3xl opacity-30"><p className="text-[10px] font-black uppercase tracking-widest">{t('waitingAnalysis')}</p></div>)}</div></div>); })}</div>{(state.d4.selectedHypotheses || []).length > 0 && (<div className="mt-12 pt-8 border-t border-slate-100 flex items-center justify-between"><div className="flex items-center gap-2"><CheckCircleIcon className="w-5 h-5 text-blue-600" /><p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('selectedHyp')} <span className="text-blue-600">{state.d4.selectedHypotheses.length}</span></p></div><button onClick={() => setStep(2)} className="px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-black transition-all active:scale-[0.95]">{t('gembaConfirm')}</button></div>)}</div>)}
+      {state.d4.step === 1 && (<div className="industrial-card rounded-[2rem] p-8 h-auto flex flex-col"><div className="flex items-center justify-between mb-8"><h3 className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-2">{t('ishikawaTitle')} <button onClick={() => setBanner({ title: t('ishikawaTitle'), content: t('ishikawaBanner') })} className="transition-all transform hover:scale-125"><QuestionMarkCircleIcon className="w-7 h-7 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" /></button></h3><button onClick={generateIshikawa} className="px-6 py-2 bg-blue-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-blue-700 transition-all shadow-md active:scale-[0.95]">{t('genIshikawa')}</button></div><div className="space-y-12 h-auto">{mCategories.map((cat: string) => { const catHypotheses = (state.d4.hypotheses || []).filter((h: Hypothesis) => h.category === cat); return (<div key={cat} className="space-y-4 h-auto"><div className="flex items-center gap-3 border-b border-slate-100 pb-2"><Square2StackIcon className="w-5 h-5 text-slate-400" /><h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest">{cat}</h4></div><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-auto">{catHypotheses.length > 0 ? (catHypotheses.map((h: Hypothesis) => (<div key={h.id} onClick={() => toggleHypothesis(h.id)} className={`p-6 rounded-3xl border-2 cursor-pointer transition-all flex flex-col justify-between active:scale-[0.98] h-auto ${state.d4.selectedHypotheses?.includes(h.id) ? 'border-blue-600 bg-blue-50 shadow-md ring-2 ring-blue-100' : 'border-slate-50 bg-white hover:border-blue-200'}`}><AutoExpandingTextarea value={h.text} onChange={(e: any) => { const nextH = [...(state.d4.hypotheses || [])]; const found = nextH.find(item => item.id === h.id); if (found) found.text = e.target.value; caseActions.updateSection('d4', (current) => ({ ...current, hypotheses: nextH })); }} onClick={(e: any) => e.stopPropagation()} className="bg-transparent text-base font-bold text-slate-700 leading-snug outline-none focus:ring-1 focus:ring-blue-100 rounded p-1" /><div className="mt-4 flex justify-end">{state.d4.selectedHypotheses?.includes(h.id) ? (<span className="px-2 py-1 bg-blue-600 text-white text-[8px] font-black uppercase rounded-lg shadow-sm">{t('fix')}</span>) : (<span className="px-2 py-1 bg-slate-100 text-slate-400 text-[8px] font-black uppercase rounded-lg">{t('fix')}</span>)}</div></div>))) : (<div className="col-span-full py-10 text-center border-2 border-dashed border-slate-100 rounded-3xl opacity-30"><p className="text-[10px] font-black uppercase tracking-widest">{t('waitingAnalysis')}</p></div>)}</div></div>); })}</div>{(state.d4.selectedHypotheses || []).length > 0 && (<div className="mt-12 pt-8 border-t border-slate-100 flex items-center justify-between"><div className="flex items-center gap-2"><CheckCircleIcon className="w-5 h-5 text-blue-600" /><p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('selectedHyp')} <span className="text-blue-600">{state.d4.selectedHypotheses.length}</span></p></div><button onClick={() => setStep(2)} className="px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-black transition-all active:scale-[0.95]">{t('gembaConfirm')}</button></div>)}</div>)}
       {state.d4.step === 2 && (
         <>
           <div className="space-y-12">
@@ -428,7 +421,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                                   const obsChecks = state.d4.observationChecks || {};
                                   const checksArr = obsChecks[diag.hypothesisId] ? [...obsChecks[diag.hypothesisId]] : [];
                                   checksArr[qIdx] = 'yes';
-                                  setState((p: any) => ({ ...p, d4: { ...p.d4, observationChecks: { ...(p.d4.observationChecks || {}), [diag.hypothesisId]: checksArr } } }));
+                                  caseActions.updateSection('d4', (current) => ({ ...current, observationChecks: { ...(current.observationChecks || {}), [diag.hypothesisId]: checksArr } }));
                                 }}
                                 className={`w-12 py-1 rounded-md text-[8px] font-black uppercase border transition-all ${checks[qIdx] === 'yes' ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' : 'bg-white text-slate-300 border-slate-50 hover:border-emerald-200 hover:text-emerald-500'}`}
                               >
@@ -439,7 +432,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                                   const obsChecks = state.d4.observationChecks || {};
                                   const checksArr = obsChecks[diag.hypothesisId] ? [...obsChecks[diag.hypothesisId]] : [];
                                   checksArr[qIdx] = 'no';
-                                  setState((p: any) => ({ ...p, d4: { ...p.d4, observationChecks: { ...(p.d4.observationChecks || {}), [diag.hypothesisId]: checksArr } } }));
+                                  caseActions.updateSection('d4', (current) => ({ ...current, observationChecks: { ...(current.observationChecks || {}), [diag.hypothesisId]: checksArr } }));
                                 }}
                                 className={`w-12 py-1 rounded-md text-[8px] font-black uppercase border transition-all ${checks[qIdx] === 'no' ? 'bg-red-600 border-red-600 text-white shadow-sm' : 'bg-white text-slate-300 border-slate-50 hover:border-red-200 hover:text-red-500'}`}
                               >
@@ -464,7 +457,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                       </button>
                     </h3>
                     <p className="text-[10px] font-bold text-slate-400 uppercase">{t('expPlanTitle')}</p>
-                  </div></div><div className="flex items-center gap-4"><button onClick={downloadExperimentalPlan} className="px-4 py-2 bg-red-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-red-700 transition-all flex items-center gap-2 shadow-md"><PrinterIcon className="w-4 h-4" /> PDF</button><div className="flex bg-slate-100 p-1 rounded-lg"><button onClick={() => setViewMode('edit')} className={`px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all ${viewMode === 'edit' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{t('edit')}</button><button onClick={() => setViewMode('preview')} className={`px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all ${viewMode === 'preview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{t('preview')}</button></div><button onClick={generateExperimentalReport} disabled={loading === 'd4Verify'} className="px-6 py-2 bg-orange-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-md hover:bg-orange-700 transition-all disabled:opacity-50">{loading === 'd4Verify' ? '...' : t('genExpReport')}</button></div></div><div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-auto"><div className="lg:col-span-2 h-auto flex flex-col"><div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 h-auto min-h-[500px] flex flex-col">{viewMode === 'edit' ? (<AutoExpandingTextarea value={state.d4.verificationPlan} onChange={(e: any) => setState((p: any) => ({ ...p, d4: { ...p.d4, verificationPlan: e.target.value } }))} className="bg-white border border-slate-200 rounded-2xl p-6 text-sm font-medium leading-relaxed outline-none transition-all mono" placeholder="..." />) : (<div id="experimental-preview-container" className="official-document p-10 rounded-[2rem] border border-slate-200 bg-white relative animate-scale-up h-auto flex flex-col min-h-[450px]"><div className="mb-8 border-b-2 border-slate-900 pb-4 no-print"><h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">{t('expPlanTitle')}</h2></div>{state.d4.verificationPlan ? (<div className="relative z-10 h-auto">{renderStyledMarkdown(state.d4.verificationPlan)}</div>) : (<div className="flex flex-col items-center justify-center h-full text-slate-300 gap-4 opacity-50 flex-grow py-20"><DocumentTextIcon className="w-16 h-16" /><p className="text-xs font-black uppercase tracking-widest">{t('waitingAnalysis')}</p></div>)}</div>)}</div></div><div><div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm sticky top-10 h-auto flex flex-col"><h4 className="text-[10px] font-black text-slate-900 uppercase mb-6 tracking-widest flex items-center gap-2"><CheckBadgeIcon className="w-4 h-4 text-orange-600" /> {t('finalCauses')}</h4><div className="space-y-3 h-auto">{(confirmedGembaHypotheses || []).map((diag: GembaDiagnostic) => (<button key={diag.hypothesisId} onClick={() => { const current = state.d4.experimentalConfirmedCauses || []; const next = current.includes(diag.hypothesisId) ? current.filter(c => c !== diag.hypothesisId) : [...current, diag.hypothesisId]; setState((p: any) => ({ ...p, d4: { ...p.d4, experimentalConfirmedCauses: next } })); }} className={`w-full p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between group h-auto ${state.d4.experimentalConfirmedCauses?.includes(diag.hypothesisId) ? 'border-emerald-500 bg-emerald-50 shadow-md' : 'border-slate-50 hover:border-orange-200 bg-white'}`}><span className={`text-xs font-bold ${state.d4.experimentalConfirmedCauses?.includes(diag.hypothesisId) ? 'text-emerald-700' : 'text-slate-600'}`}>{diag.cause}</span>                    {state.d4.experimentalConfirmedCauses?.includes(diag.hypothesisId) ? <CheckBadgeIconSolid className="w-5 h-5 text-emerald-600" /> : <CheckIcon className="w-5 h-5 text-slate-200 group-hover:text-orange-300 transition-colors" />}
+                  </div></div><div className="flex items-center gap-4"><button onClick={downloadExperimentalPlan} className="px-4 py-2 bg-red-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest hover:bg-red-700 transition-all flex items-center gap-2 shadow-md"><PrinterIcon className="w-4 h-4" /> PDF</button><div className="flex bg-slate-100 p-1 rounded-lg"><button onClick={() => setViewMode('edit')} className={`px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all ${viewMode === 'edit' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{t('edit')}</button><button onClick={() => setViewMode('preview')} className={`px-3 py-1 text-[9px] font-black uppercase rounded-md transition-all ${viewMode === 'preview' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>{t('preview')}</button></div><button onClick={generateExperimentalReport} disabled={loading === 'd4Verify'} className="px-6 py-2 bg-orange-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-md hover:bg-orange-700 transition-all disabled:opacity-50">{loading === 'd4Verify' ? '...' : t('genExpReport')}</button></div></div><div className="grid grid-cols-1 lg:grid-cols-3 gap-8 h-auto"><div className="lg:col-span-2 h-auto flex flex-col"><div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 h-auto min-h-[500px] flex flex-col">{viewMode === 'edit' ? (<AutoExpandingTextarea value={state.d4.verificationPlan} onChange={(e: any) => caseActions.updateSection('d4', (current) => ({ ...current, verificationPlan: e.target.value }))} className="bg-white border border-slate-200 rounded-2xl p-6 text-sm font-medium leading-relaxed outline-none transition-all mono" placeholder="..." />) : (<div id="experimental-preview-container" className="official-document p-10 rounded-[2rem] border border-slate-200 bg-white relative animate-scale-up h-auto flex flex-col min-h-[450px]"><div className="mb-8 border-b-2 border-slate-900 pb-4 no-print"><h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">{t('expPlanTitle')}</h2></div>{state.d4.verificationPlan ? (<div className="relative z-10 h-auto">{renderStyledMarkdown(state.d4.verificationPlan)}</div>) : (<div className="flex flex-col items-center justify-center h-full text-slate-300 gap-4 opacity-50 flex-grow py-20"><DocumentTextIcon className="w-16 h-16" /><p className="text-xs font-black uppercase tracking-widest">{t('waitingAnalysis')}</p></div>)}</div>)}</div></div><div><div className="bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm sticky top-10 h-auto flex flex-col"><h4 className="text-[10px] font-black text-slate-900 uppercase mb-6 tracking-widest flex items-center gap-2"><CheckBadgeIcon className="w-4 h-4 text-orange-600" /> {t('finalCauses')}</h4><div className="space-y-3 h-auto">{(confirmedGembaHypotheses || []).map((diag: GembaDiagnostic) => (<button key={diag.hypothesisId} onClick={() => { const current = state.d4.experimentalConfirmedCauses || []; const next = current.includes(diag.hypothesisId) ? current.filter(c => c !== diag.hypothesisId) : [...current, diag.hypothesisId]; caseActions.updateSection('d4', (current) => ({ ...current, experimentalConfirmedCauses: next })); }} className={`w-full p-4 rounded-2xl border-2 text-left transition-all flex items-center justify-between group h-auto ${state.d4.experimentalConfirmedCauses?.includes(diag.hypothesisId) ? 'border-emerald-500 bg-emerald-50 shadow-md' : 'border-slate-50 hover:border-orange-200 bg-white'}`}><span className={`text-xs font-bold ${state.d4.experimentalConfirmedCauses?.includes(diag.hypothesisId) ? 'text-emerald-700' : 'text-slate-600'}`}>{diag.cause}</span>                    {state.d4.experimentalConfirmedCauses?.includes(diag.hypothesisId) ? <CheckBadgeIconSolid className="w-5 h-5 text-emerald-600" /> : <CheckIcon className="w-5 h-5 text-slate-200 group-hover:text-orange-300 transition-colors" />}
                   </button>
                 ))}
               </div>
@@ -529,7 +522,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                     </button>
                     {state.d4.gembaConclusions && (
                       <button
-                        onClick={() => setState((p: any) => ({ ...p, d4: { ...p.d4, gembaConclusions: "" } }))}
+                        onClick={() => caseActions.updateSection('d4', (current) => ({ ...current, gembaConclusions: "" }))}
                         className="px-3 py-2 bg-red-50 text-red-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100"
                       >
                         {t('clear')}
@@ -540,7 +533,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
 
                 <textarea
                   value={state.d4.gembaConclusions || ""}
-                  onChange={(e) => setState((p: any) => ({ ...p, d4: { ...p.d4, gembaConclusions: e.target.value } }))}
+                  onChange={(e) => caseActions.updateSection('d4', (current) => ({ ...current, gembaConclusions: e.target.value }))}
                   placeholder={t('writeOrPasteTheGembaSummary')}
                   className="w-full bg-slate-50 border border-slate-200 rounded-[1.5rem] p-4 text-xs font-semibold focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 outline-none transition-all placeholder-slate-400 min-h-[100px]"
                 />
@@ -775,7 +768,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                   <div key={id} className={`p-8 rounded-[2rem] border-2 transition-all h-auto flex flex-col ${isPrimary ? 'border-blue-600 bg-blue-50 shadow-lg' : 'border-slate-100 bg-white hover:border-slate-200'}`}>
                     <div className="flex items-start justify-between mb-4">
                       <div className={`p-2 rounded-lg ${isPrimary ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>{isPrimary ? <StarIcon className="w-5 h-5" /> : <Square2StackIcon className="w-5 h-5" />}</div>
-                      <button onClick={() => setState((p: any) => ({ ...p, d4: { ...p.d4, primaryCauseId: id } }))} className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all ${isPrimary ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 hover:bg-blue-100'}`}>{isPrimary ? t('primary') : t('fix')}</button>
+                      <button onClick={() => caseActions.updateSection('d4', (current) => ({ ...current, primaryCauseId: id }))} className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all ${isPrimary ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 hover:bg-blue-100'}`}>{isPrimary ? t('primary') : t('fix')}</button>
                     </div>
                     <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">{t('rootCauseTitle')}</p>
                     <h4 className="text-sm font-bold text-slate-800 leading-relaxed mb-6">{analysis.systemicRootCause}</h4>
@@ -786,7 +779,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                         <div className="space-y-2 h-auto">
                           {actions.map((action, idx) => (
                             <div key={idx} className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm text-[11px] font-bold text-slate-600">
-                              <AutoExpandingTextarea value={action.action} onChange={(e: any) => { const nextActions = [...(state.d4.secondaryActions[id] || [])]; nextActions[idx] = { ...nextActions[idx], action: e.target.value }; setState((p: any) => ({ ...p, d4: { ...p.d4, secondaryActions: { ...p.d4.secondaryActions, [id]: nextActions } } })); }} className="bg-transparent text-[11px] font-bold text-emerald-800 outline-none w-full" />
+                              <AutoExpandingTextarea value={action.action} onChange={(e: any) => { const nextActions = [...(state.d4.secondaryActions[id] || [])]; nextActions[idx] = { ...nextActions[idx], action: e.target.value }; caseActions.updateSection('d4', (current) => ({ ...current, secondaryActions: { ...current.secondaryActions, [id]: nextActions } })); }} className="bg-transparent text-[11px] font-bold text-emerald-800 outline-none w-full" />
                             </div>
                           ))}
                         </div>

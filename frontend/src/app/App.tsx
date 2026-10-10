@@ -4,6 +4,8 @@ import { ClipboardDocumentCheckIcon, ShieldCheckIcon, MagnifyingGlassIcon, Wrenc
 import * as XLSX from 'xlsx';
 import { runAiOperation, type AiOperation } from '../services/api/aiApi';
 import { casesApi } from '../services/api/casesApi';
+import { caseActions, useCaseState } from '../store/caseStore';
+import type { Banner } from '../features/sectionProps';
 import { useAuth } from '../features/auth/AuthProvider';
 import { useCasePersistence } from '../features/persistence/useCasePersistence';
 import { D1D2Section } from '../features/d1d2/D1D2Section';
@@ -27,16 +29,15 @@ import { appStylesheets, handleDownloadPDF, printWindowAfter } from '../shared/u
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.SETUP);
-  const [loading, setLoading] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [state, setState] = useState<AppState>(INITIAL_STATE);
+  const state = useCaseState();
   const { user, logout } = useAuth();
-  const { status: saveStatus, ready: caseReady } = useCasePersistence(user!, state, setState);
+  const { status: saveStatus, ready: caseReady } = useCasePersistence(user!, state, caseActions.replaceCase);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [warningAccepted, setWarningAccepted] = useState(false);
-  const [banner, setBanner] = useState<{ title: string; content: string } | null>(null);
+  const [banner, setBanner] = useState<Banner | null>(null);
 
   const handleAcceptWarning = () => {
     setWarningAccepted(true);
@@ -54,25 +55,6 @@ export const App: React.FC = () => {
 
   const lang = state?.language || 'es';
   const t = useMemo(() => translatorFor(lang), [lang]);
-
-  // Ejecuta una operación de IA en el backend con los datos del caso.
-  const runAi = async (
-    key: string,
-    operation: AiOperation,
-    input: unknown,
-    callback?: (data: any) => void
-  ) => {
-    setLoading(key);
-    try {
-      const data = await runAiOperation(operation, state, input);
-      if (callback) callback(data);
-    } catch (error: any) {
-      console.error("AI Error:", error);
-      alert(`${t('waitingAnalysis')} Error: ${error?.message || 'Error'}`);
-    } finally {
-      setLoading(null);
-    }
-  };
 
   const exportProject = () => {
     const dataStr = JSON.stringify(state, null, 2);
@@ -94,7 +76,7 @@ export const App: React.FC = () => {
           const json = JSON.parse(e.target?.result as string);
           // El backend valida la estructura y migra archivos de versiones anteriores.
           const migratedState = await casesApi.normalize(json);
-          setState(migratedState);
+          caseActions.replaceCase(migratedState);
           alert(t('successLoad'));
         } catch (error) {
           alert(t('errorLoad'));
@@ -137,7 +119,7 @@ export const App: React.FC = () => {
   };
 
   const toggleLanguage = () => {
-    setState(prev => ({ ...prev, language: prev.language === 'es' ? 'en' : 'es' }));
+    caseActions.toggleLanguage();
   };
 
   const toggleFullscreen = () => {
@@ -346,15 +328,15 @@ export const App: React.FC = () => {
         </header>
         <div className="flex-grow overflow-y-auto p-12 custom-scroll bg-slate-200/40">
           <div className="max-w-7xl mx-auto">
-            {activeTab === Tab.SETUP && <SetupSection state={state} setState={setState} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D1_D2 && <D1D2Section state={state} setState={setState} runAi={runAi} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D3 && <D3Section state={state} setState={setState} runAi={runAi} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D4 && <D4Section state={state} setState={setState} runAi={runAi} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D5 && <D5Section state={state} setState={setState} runAi={runAi} loading={loading} setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D6 && <D6Section state={state} setState={setState} runAi={runAi} loading={loading} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D7 && <D8Section state={state} setState={setState} runAi={runAi} loading={loading} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.D8 && <D7Section state={state} setState={setState} runAi={runAi} loading={loading} t={t} setBanner={setBanner} />}
-            {activeTab === Tab.EFFICACY && <EfficacySection state={state} setState={setState} runAi={runAi} loading={loading} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.SETUP && <SetupSection setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D1_D2 && <D1D2Section setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D3 && <D3Section setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D4 && <D4Section setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D5 && <D5Section setActiveTab={setActiveTab} t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D6 && <D6Section t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D7 && <D8Section t={t} setBanner={setBanner} />}
+            {activeTab === Tab.D8 && <D7Section t={t} setBanner={setBanner} />}
+            {activeTab === Tab.EFFICACY && <EfficacySection t={t} setBanner={setBanner} />}
           </div>
         </div>
         <div id="full-report-print" className="hidden"><FullReportTemplate state={state} t={t} /></div>

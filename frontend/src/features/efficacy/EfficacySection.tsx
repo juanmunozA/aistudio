@@ -4,13 +4,15 @@ import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingText
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
+import { caseActions, useCaseState } from '../../store/caseStore';
+import type { SectionProps } from '../sectionProps';
+import { useAiRunner } from '../ai/useAiRunner';
 
-export const EfficacySection = ({ state, setState, runAi, loading, t, setBanner }: any) => {
+export const EfficacySection = ({ t, setBanner }: SectionProps) => {
+  const state = useCaseState();
+  const { runAi, loading } = useAiRunner();
   const handleResetSection = () => {
-    setState((p: AppState) => ({
-      ...p,
-      efficacy: INITIAL_STATE.efficacy
-    }));
+    caseActions.updateSection('efficacy', (current) => INITIAL_STATE.efficacy);
   };
 
   const generateProtocols = () => {
@@ -63,13 +65,10 @@ export const EfficacySection = ({ state, setState, runAi, loading, t, setBanner 
         isEffective: p.isEffective || 'SI'
       };
 
-      setState((prev: AppState) => ({
-        ...prev,
-        efficacy: {
-          ...prev.efficacy,
+      caseActions.updateSection('efficacy', (current) => ({
+          ...current,
           protocols: [unifiedProtocol]
-        }
-      }));
+        }));
     });
   };
 
@@ -80,24 +79,21 @@ export const EfficacySection = ({ state, setState, runAi, loading, t, setBanner 
     if (state.efficacy.verificationGuides && state.efficacy.verificationGuides[protocol.id]) return;
 
     runAi(`guide-${protocol.id}`, 'verificationGuide', { verificationMethod: protocol.verificationMethod }, (data) => {
-      setState((prev: AppState) => ({
-        ...prev,
-        efficacy: {
-          ...prev.efficacy,
+      caseActions.updateSection('efficacy', (current) => ({
+          ...current,
           verificationGuides: {
-            ...(prev.efficacy.verificationGuides || {}),
+            ...(current.verificationGuides || {}),
             [protocol.id]: typeof data === 'string' ? data : (data.text || JSON.stringify(data))
           }
-        }
-      }));
+        }));
     });
   };
 
   const updateProtocol = (idx: number, field: keyof EfficacyProtocol, value: string) => {
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       const nextProtocols = [...p.efficacy.protocols];
       nextProtocols[idx] = { ...nextProtocols[idx], [field]: value };
-      return { ...p, efficacy: { protocols: nextProtocols } };
+      return { ...p, efficacy: { ...p.efficacy, protocols: nextProtocols } };
     });
   };
 

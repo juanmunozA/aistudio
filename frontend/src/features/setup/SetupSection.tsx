@@ -3,13 +3,13 @@ import { ShieldCheckIcon, AdjustmentsHorizontalIcon, CalendarDaysIcon, Identific
 import { ResetButton } from '../../shared/components/ResetButton';
 import { auditStandards, deviationImpacts, foodSafetyImpacts } from '../../shared/constants/catalogs';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
+import { caseActions, useCaseState } from '../../store/caseStore';
+import type { SectionProps } from '../sectionProps';
 
-export const SetupSection = ({ state, setState, setActiveTab, t, setBanner }: any) => {
+export const SetupSection = ({ setActiveTab, t, setBanner }: SectionProps) => {
+  const state = useCaseState();
   const handleResetSection = () => {
-    setState((p: AppState) => ({
-      ...p,
-      setup: INITIAL_STATE.setup
-    }));
+    caseActions.updateSection('setup', (current) => INITIAL_STATE.setup);
   };
 
   const handleChange = (field: keyof AnalysisSetup, value: any) => { 
@@ -19,32 +19,26 @@ export const SetupSection = ({ state, setState, setActiveTab, t, setBanner }: an
         const currentImpacts = state.setup.impact || [];
         const filtered = currentImpacts.filter((i: string) => validFoodSafety.includes(i));
         const newImpacts = filtered.length > 0 ? filtered : [validFoodSafety[0]];
-        setState((prev: any) => ({
-          ...prev,
-          setup: {
-            ...prev.setup,
+        caseActions.updateSection('setup', (current) => ({
+            ...current,
             type: value,
             impact: newImpacts
-          }
-        }));
+          }));
         return;
       } else if (state.setup.type === 'Quejas de Inocuidad' && value !== 'Quejas de Inocuidad') {
         const validDev = ((deviationImpacts as any)[state.language] || deviationImpacts.es);
         const currentImpacts = state.setup.impact || [];
         const filtered = currentImpacts.filter((i: string) => validDev.includes(i));
         const newImpacts = filtered.length > 0 ? filtered : [validDev[1] || validDev[0]];
-        setState((prev: any) => ({
-          ...prev,
-          setup: {
-            ...prev.setup,
+        caseActions.updateSection('setup', (current) => ({
+            ...current,
             type: value,
             impact: newImpacts
-          }
-        }));
+          }));
         return;
       }
     }
-    setState((prev: any) => ({ ...prev, setup: { ...prev.setup, [field]: value } })); 
+    caseActions.updateSection('setup', (current) => ({ ...current, [field]: value })); 
   };
   const toggleStandard = (std: string) => { const current = state.setup.standards || []; const next = current.includes(std) ? current.filter((s: string) => s !== std) : [...current, std]; handleChange('standards', next); };
   const toggleImpact = (impact: string) => { const current = state.setup.impact || []; const next = current.includes(impact) ? current.filter((i: string) => i !== impact) : [...current, impact]; handleChange('impact', next); };

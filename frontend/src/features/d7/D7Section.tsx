@@ -6,13 +6,15 @@ import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
 import { handleDownloadPDF } from '../../shared/utils/print';
+import { caseActions, useCaseState } from '../../store/caseStore';
+import type { SectionProps } from '../sectionProps';
+import { useAiRunner } from '../ai/useAiRunner';
 
-export const D7Section = ({ state, setState, runAi, loading, t, setBanner }: any) => {
+export const D7Section = ({ t, setBanner }: SectionProps) => {
+  const state = useCaseState();
+  const { runAi, loading } = useAiRunner();
   const handleResetSection = () => {
-    setState((p: AppState) => ({
-      ...p,
-      d7: INITIAL_STATE.d7
-    }));
+    caseActions.updateSection('d7', (current) => INITIAL_STATE.d7);
   };
 
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('preview');
@@ -44,18 +46,18 @@ export const D7Section = ({ state, setState, runAi, loading, t, setBanner }: any
       })),
       responsible: state.setup.responsible,
       generatedOn: new Date().toLocaleDateString(),
-    }, (data) => setState((p: AppState) => ({ ...p, d7: { a3Report: (data as any) } })));
+    }, (data) => caseActions.updateSection('d7', (current) => ({ a3Report: (data as any) })));
   };
 
   const updateA3Field = (field: keyof A3ReportData, val: any) => {
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       if (!p.d7.a3Report) return p;
       return { ...p, d7: { ...p.d7, a3Report: { ...p.d7.a3Report, [field]: val } } };
     });
   };
 
   const updateA3Action = (idx: number, val: string) => {
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       if (!p.d7.a3Report || !p.d7.a3Report.actions) return p;
       const nextActions = [...p.d7.a3Report.actions];
       nextActions[idx] = { ...nextActions[idx], action: val };
@@ -64,7 +66,7 @@ export const D7Section = ({ state, setState, runAi, loading, t, setBanner }: any
   };
 
   const updateA3ActionDate = (idx: number, val: string) => {
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       if (!p.d7.a3Report || !p.d7.a3Report.actions) return p;
       const nextActions = [...p.d7.a3Report.actions];
       nextActions[idx] = { ...nextActions[idx], timeframe: val };
@@ -73,7 +75,7 @@ export const D7Section = ({ state, setState, runAi, loading, t, setBanner }: any
   };
 
   const updateEfficacyStepField = (idx: number, field: keyof EfficacyStep, val: string) => {
-    setState((p: AppState) => {
+    caseActions.updateCase((p: AppState) => {
       if (!p.d7.a3Report || !p.d7.a3Report.efficacySteps) return p;
       const nextSteps = [...p.d7.a3Report.efficacySteps];
       nextSteps[idx] = { ...nextSteps[idx], [field]: val };

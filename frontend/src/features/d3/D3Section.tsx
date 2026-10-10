@@ -5,13 +5,15 @@ import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingText
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
+import { caseActions, useCaseState } from '../../store/caseStore';
+import type { SectionProps } from '../sectionProps';
+import { useAiRunner } from '../ai/useAiRunner';
 
-export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, setBanner }: any) => {
+export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
+  const state = useCaseState();
+  const { runAi, loading } = useAiRunner();
   const handleResetSection = () => {
-    setState((p: AppState) => ({
-      ...p,
-      d3: INITIAL_STATE.d3
-    }));
+    caseActions.updateSection('d3', (current) => INITIAL_STATE.d3);
   };
 
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('preview');
@@ -36,15 +38,12 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
           id: `ca-${Date.now()}-${i}`
         }));
 
-        setState((p: any) => ({
-          ...p,
-          d3: {
-            ...p.d3,
+        caseActions.updateSection('d3', (current) => ({
+            ...current,
             correctiveActions: [...selectedActions, ...newActions],
             // selectedCorrectiveActionIds is preserved as it is in the state
             implementationPlan: ""
-          }
-        }));
+          }));
       }
     );
   };
@@ -58,13 +57,10 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
       'd3Implementation',
       { actions: selectedActions.map(a => ({ action: a.action, responsible: a.responsible, implementationDate: a.implementationDate })) },
       (data) => {
-        setState((p: any) => ({
-          ...p,
-          d3: {
-            ...p.d3,
+        caseActions.updateSection('d3', (current) => ({
+            ...current,
             implementationPlan: data || ""
-          }
-        }));
+          }));
         setViewMode('preview');
       }
     );
@@ -114,15 +110,12 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                 checked={!!state.d3.isNotApplicable} 
                 onChange={(e) => {
                   const checked = e.target.checked;
-                  setState((p: any) => ({
-                    ...p,
-                    d3: {
-                      ...p.d3,
+                  caseActions.updateSection('d3', (current) => ({
+                      ...current,
                       isNotApplicable: checked,
-                      selectedCorrectiveActionIds: checked ? [] : p.d3.selectedCorrectiveActionIds,
-                      implementationPlan: checked ? "No aplica para este caso" : p.d3.implementationPlan
-                    }
-                  }));
+                      selectedCorrectiveActionIds: checked ? [] : current.selectedCorrectiveActionIds,
+                      implementationPlan: checked ? "No aplica para este caso" : current.implementationPlan
+                    }));
                 }}
                 className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
               />
@@ -159,7 +152,7 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
             {state.d3.correctiveActions.map((action: any) => (
             <div
               key={action.id}
-              onClick={() => setState((p: any) => {
+              onClick={() => caseActions.updateCase((p: any) => {
                 const currentIds = p.d3.selectedCorrectiveActionIds || [];
                 const nextIds = currentIds.includes(action.id)
                   ? currentIds.filter((id: string) => id !== action.id)
@@ -184,7 +177,7 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                 value={action.action}
                 onChange={(e: any) => {
                   const nextActions = state.d3.correctiveActions.map((a: any) => a.id === action.id ? { ...a, action: e.target.value } : a);
-                  setState((p: any) => ({ ...p, d3: { ...p.d3, correctiveActions: nextActions } }));
+                  caseActions.updateSection('d3', (current) => ({ ...current, correctiveActions: nextActions }));
                 }}
                 onClick={(e: any) => e.stopPropagation()}
                 className="bg-transparent text-sm font-bold text-slate-700 leading-relaxed outline-none focus:ring-1 focus:ring-blue-100 rounded p-1"
@@ -198,7 +191,7 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       const nextActions = state.d3.correctiveActions.map((a: any) => a.id === action.id ? { ...a, responsible: e.target.value } : a);
-                      setState((p: any) => ({ ...p, d3: { ...p.d3, correctiveActions: nextActions } }));
+                      caseActions.updateSection('d3', (current) => ({ ...current, correctiveActions: nextActions }));
                     }}
                     className="w-full bg-white/50 border border-slate-200 rounded-lg p-2 text-[10px] font-bold outline-none focus:ring-2 focus:ring-blue-600/20"
                   />
@@ -211,7 +204,7 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       const nextActions = state.d3.correctiveActions.map((a: any) => a.id === action.id ? { ...a, implementationDate: e.target.value } : a);
-                      setState((p: any) => ({ ...p, d3: { ...p.d3, correctiveActions: nextActions } }));
+                      caseActions.updateSection('d3', (current) => ({ ...current, correctiveActions: nextActions }));
                     }}
                     className="w-full bg-white/50 border border-slate-200 rounded-lg p-2 text-[10px] font-bold outline-none focus:ring-2 focus:ring-blue-600/20"
                   />
@@ -257,7 +250,7 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
             {viewMode === 'edit' ? (
               <AutoExpandingTextarea
                 value={state.d3.implementationPlan}
-                onChange={(e: any) => setState((p: any) => ({ ...p, d3: { ...p.d3, implementationPlan: e.target.value } }))}
+                onChange={(e: any) => caseActions.updateSection('d3', (current) => ({ ...current, implementationPlan: e.target.value }))}
                 className="bg-slate-50 border border-slate-200 rounded-3xl p-8 text-sm font-medium mono focus:ring-0 outline-none transition-all leading-relaxed"
               />
             ) : (

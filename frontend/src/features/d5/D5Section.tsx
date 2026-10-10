@@ -5,15 +5,17 @@ import * as XLSX from 'xlsx';
 import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingTextarea';
 import { ResetButton } from '../../shared/components/ResetButton';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
+import { caseActions, useCaseState } from '../../store/caseStore';
+import type { SectionProps } from '../sectionProps';
+import { useAiRunner } from '../ai/useAiRunner';
 
-export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, setBanner }: any) => {
-  const setD5Step = (s: number) => setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, step: s } }));
+export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
+  const state = useCaseState();
+  const { runAi, loading } = useAiRunner();
+  const setD5Step = (s: number) => caseActions.updateSection('d5_d6', (current) => ({ ...current, step: s }));
 
   const handleResetSection = () => {
-    setState((p: AppState) => ({
-      ...p,
-      d5_d6: INITIAL_STATE.d5_d6
-    }));
+    caseActions.updateSection('d5_d6', (current) => INITIAL_STATE.d5_d6);
   };
 
   const generateACP = (evt?: any) => {
@@ -101,7 +103,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
           }
         });
 
-        setState((p: any) => ({
+        caseActions.updateCase((p: any) => ({
           ...p,
           d4: { ...p.d4, secondaryActions: actionMap },
           d5_d6: { ...(p.d5_d6 || {}), acpPlans: newPlans }
@@ -150,10 +152,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
       }
     });
 
-    setState((p: any) => ({
-      ...p,
-      d5_d6: { ...(p.d5_d6 || {}), acpPlans: newPlans }
-    }));
+    caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: newPlans }));
 
     if (isManualClick) {
       if (newPlans.length > 0) {
@@ -251,29 +250,23 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
           actions: finalActions
         };
 
-        setState((p: AppState) => ({
-          ...p,
-          d5_d6: {
-            ...(p.d5_d6 || {}),
+        caseActions.updateSection('d5_d6', (current) => ({
+            ...current,
             acpPlans: nextPlans
-          }
-        }));
+          }));
       }
     );
   };
 
   const generateImplementationGuide = (action: ActionStep) => {
     runAi(`d5Impl-${action.id}`, 'd5Implementation', { action: action.action, responsible: action.responsible, timeframe: action.timeframe }, (data) => {
-      setState((p: AppState) => ({
-        ...p,
-        d5_d6: {
-          ...p.d5_d6,
+      caseActions.updateSection('d5_d6', (current) => ({
+          ...current,
           implementationSuggestions: {
-            ...(p.d5_d6.implementationSuggestions || {}),
+            ...(current.implementationSuggestions || {}),
             [action.id]: data
           }
-        }
-      }));
+        }));
     });
   };
 
@@ -396,7 +389,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                       onChange={(e: any) => { 
                         const nextPlans = [...state.d5_d6.acpPlans]; 
                         nextPlans[pIdx].title = e.target.value; 
-                        setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, acpPlans: nextPlans } })); 
+                        caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
                       }} 
                       className="bg-transparent text-2xl font-black text-slate-900 uppercase tracking-tight leading-tight outline-none w-full border-none p-0 focus:ring-0" 
                     />
@@ -416,7 +409,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                         onChange={(e: any) => { 
                           const nextPlans = [...state.d5_d6.acpPlans]; 
                           nextPlans[pIdx].rootCause = e.target.value; 
-                          setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, acpPlans: nextPlans } })); 
+                          caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
                         }} 
                         className="bg-transparent text-sm font-bold text-slate-700 leading-relaxed outline-none w-full border-none p-0 focus:ring-0" 
                       />
@@ -447,7 +440,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                               onChange={(e) => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].actionId = e.target.value; 
-                                setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, acpPlans: nextPlans } })); 
+                                caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
                               }} 
                               className="bg-transparent text-[10px] font-black text-slate-700 mono outline-none w-full border-none p-0 focus:ring-0" 
                               placeholder="ID"
@@ -459,7 +452,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                               onChange={(e: any) => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].action = e.target.value; 
-                                setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, acpPlans: nextPlans } })); 
+                                caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
                               }} 
                               className="bg-transparent text-[11px] font-bold text-slate-700 outline-none w-full border-none p-0 focus:ring-0" 
                             />
@@ -470,7 +463,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                               onChange={(e: any) => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].evidenceHow = e.target.value; 
-                                setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, acpPlans: nextPlans } })); 
+                                caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
                               }} 
                               className="bg-transparent text-[11px] font-bold text-slate-700 outline-none w-full border-none p-0 focus:ring-0" 
                               placeholder="..."
@@ -482,7 +475,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                               onChange={(e: any) => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].verificationHow = e.target.value; 
-                                setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, acpPlans: nextPlans } })); 
+                                caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
                               }} 
                               className="bg-transparent text-[11px] font-bold text-slate-700 outline-none w-full border-none p-0 focus:ring-0" 
                               placeholder="..."
@@ -495,7 +488,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                               onChange={(e) => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].timeframe = e.target.value; 
-                                setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, acpPlans: nextPlans } })); 
+                                caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
                               }} 
                               className="bg-transparent text-[10px] font-bold text-slate-500 outline-none w-full border-none p-0 focus:ring-0 cursor-pointer" 
                             />
@@ -507,7 +500,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                               onChange={(e) => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].responsible = e.target.value; 
-                                setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, acpPlans: nextPlans } })); 
+                                caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
                               }} 
                               className="bg-transparent text-[10px] font-bold text-slate-500 outline-none w-full border-none p-0 focus:ring-0" 
                             />
@@ -517,7 +510,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                               onClick={() => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].isFixed = !action.isFixed; 
-                                setState((p: any) => ({ ...p, d5_d6: { ...p.d5_d6, acpPlans: nextPlans } })); 
+                                caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
                               }} 
                               className={`p-2 rounded-lg transition-all ${action.isFixed ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-300 hover:text-blue-600'}`}
                             >
@@ -592,16 +585,13 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                         <AutoExpandingTextarea 
                           value={suggestion} 
                           onChange={(e: any) => {
-                            setState((p: AppState) => ({
-                              ...p,
-                              d5_d6: {
-                                ...p.d5_d6,
+                            caseActions.updateSection('d5_d6', (current) => ({
+                                ...current,
                                 implementationSuggestions: {
-                                  ...(p.d5_d6.implementationSuggestions || {}),
+                                  ...(current.implementationSuggestions || {}),
                                   [action.id]: e.target.value
                                 }
-                              }
-                            }));
+                              }));
                           }}
                           className="bg-transparent text-sm font-medium text-slate-700 leading-relaxed outline-none w-full border-none p-0 focus:ring-0" 
                         />
