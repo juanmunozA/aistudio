@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AppState } from '../../../types';
+import type { AppState } from '../../types';
 import type { SessionUser } from '../../services/api/authApi';
 import { casesApi, type StoredCase } from '../../services/api/casesApi';
 import { ApiError } from '../../services/api/httpClient';
