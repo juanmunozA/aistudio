@@ -4,7 +4,7 @@ import { ArrowPathIcon, DocumentTextIcon, QuestionMarkCircleIcon, PrinterIcon, P
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
-import { appStylesheets, handleDownloadPDF, printWindowAfter } from '../../shared/utils/print';
+import { handleDownloadPDF, printPokaYokeGuide } from '../../shared/utils/print';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
 import { useAiRunner } from '../ai/useAiRunner';
@@ -63,51 +63,7 @@ export const D6Section = ({ t, setBanner }: SectionProps) => {
           onClick={() => {
             const confirmedPokas = (state.d5_d6.pokaYokes || []).filter((p: PokaYokeSolution) => p.isConfirmed && p.details);
             if (confirmedPokas.length === 0) return alert(t('noConfirmedPokaYokesWithTechnical'));
-            
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) return;
-            
-            printWindow.document.write(`
-              <html>
-                <head>
-                  <title>Guia_Tecnica_PokaYoke_Completa</title>
-                  ${appStylesheets()}
-                  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-                  <style>
-                    @page { size: A4 landscape; margin: 15mm; }
-                    body { font-family: 'Inter', sans-serif; padding: 0; color: #1e293b; background: white; -webkit-print-color-adjust: exact; }
-                    .official-document { border: none !important; box-shadow: none !important; margin: 0 !important; width: 100% !important; }
-                    .page-break { page-break-before: always; }
-                    .industrial-card { border: 1px solid #e2e8f0; border-radius: 1.5rem; background: #f8fafc; margin-bottom: 1.5rem; padding: 1.5rem; }
-                  </style>
-                </head>
-                <body>
-                  <div class="max-w-4xl mx-auto p-10">
-                    <h1 class="text-4xl font-black text-slate-900 uppercase tracking-tighter mb-10 border-b-4 border-slate-900 pb-4">Guía Técnica Poka-Yoke</h1>
-                    ${confirmedPokas.map((p: PokaYokeSolution, idx: number) => `
-                      <div class="${idx > 0 ? 'page-break mt-10' : ''}">
-                        <div class="mb-6">
-                          <h2 class="text-2xl font-black text-blue-600 uppercase tracking-tight">${p.description}</h2>
-                          <div class="flex gap-2 mt-2">
-                            <span class="px-2 py-1 bg-slate-100 text-[10px] font-black uppercase rounded">${p.type}</span>
-                            <span class="px-2 py-1 bg-slate-100 text-[10px] font-black uppercase rounded">${p.level}</span>
-                          </div>
-                        </div>
-                        <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100 mb-6">
-                          <p class="text-[10px] font-black text-orange-600 uppercase mb-2 tracking-widest">Beneficio Esperado</p>
-                          <p class="text-sm font-bold text-slate-600">${p.benefit}</p>
-                        </div>
-                        <div class="prose max-w-none">
-                          ${p.details ? p.details.split('\n').map(line => `<p class="text-sm text-slate-700 mb-2">${line}</p>`).join('') : ''}
-                        </div>
-                      </div>
-                    `).join('')}
-                  </div>
-                </body>
-              </html>
-            `);
-            printWindow.document.close();
-            printWindowAfter(printWindow, 500, 'afterprint');
+            printPokaYokeGuide(confirmedPokas);
           }}
           className="px-8 py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-red-700 transition-all flex items-center gap-2 active:scale-[0.95]"
         >
