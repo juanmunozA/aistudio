@@ -6,6 +6,8 @@ import { ResetButton } from '../../shared/components/ResetButton';
 import { DEFAULT_COST_INPUTS, INITIAL_STATE } from '../../shared/constants/initialState';
 import { extractTextFromFile } from '../../shared/utils/files';
 import { formatCurrencyInput } from '../../shared/utils/format';
+import { attachmentsApi, isAttachmentRef } from '../../services/api/attachmentsApi';
+import { CaseImage } from '../../shared/components/CaseImage';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
 import { useAiRunner } from '../ai/useAiRunner';
@@ -37,15 +39,6 @@ export const D1D2Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
     }));
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -59,10 +52,12 @@ export const D1D2Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
 
       if (isImage) {
         try {
-          const base64 = await fileToBase64(file);
-          caseActions.updateSection('d2', (current) => ({ ...current, images: [...(current.images || []), base64] }));
+          // La imagen se guarda en el almacenamiento; en el caso queda solo su referencia.
+          const attachment = await attachmentsApi.uploadImage(file);
+          caseActions.updateSection('d2', (current) => ({ ...current, images: [...(current.images || []), attachment.ref] }));
         } catch (err) {
-          console.error("Error converting image to base64", err);
+          console.error("Error uploading image", err);
+          alert(t('imageUploadError'));
         }
       } else {
         const text = await extractTextFromFile(file);
@@ -191,9 +186,12 @@ export const D1D2Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
                 <div className="flex flex-wrap gap-2 mb-4">
                   {state.d2.images.map((img: string, idx: number) => (
                     <div key={idx} className="relative group">
-                      <img src={img} alt={`Upload ${idx}`} className="w-20 h-20 object-cover rounded-xl border border-slate-200" referrerPolicy="no-referrer" />
+                      <CaseImage source={img} alt={`Upload ${idx}`} className="w-20 h-20 object-cover rounded-xl border border-slate-200" referrerPolicy="no-referrer" />
                       <button 
-                        onClick={() => caseActions.updateSection('d2', (current) => ({ ...current, images: current.images?.filter((_, i) => i !== idx) }))}
+                        onClick={() => {
+                          if (isAttachmentRef(img)) attachmentsApi.remove(img).catch((error) => console.error('Error removing attachment:', error));
+                          caseActions.updateSection('d2', (current) => ({ ...current, images: current.images?.filter((_, i) => i !== idx) }));
+                        }}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <XMarkIcon className="w-3 h-3" />

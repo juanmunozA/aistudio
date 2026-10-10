@@ -360,5 +360,6 @@
   "acpPlanTitle": "Plan ACP: {{text}}...",
   "acpPlanIntro": "Acciones para mitigación de falla.",
   "improvementPlanTitle": "Plan de Mejora: {{text}}...",
-  "improvementPlanIntro": "Acciones de mejora para la oportunidad identificada en D1."
+  "improvementPlanIntro": "Acciones de mejora para la oportunidad identificada en D1.",
+  "imageUploadError": "No se pudo subir la imagen. Verifique que sea PNG, JPG o WEBP de máximo 10 MB."
 }

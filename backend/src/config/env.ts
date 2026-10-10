@@ -36,10 +36,24 @@ const envSchema = z
     AZURE_OPENAI_API_VERSION: z.string().default('2024-10-21'),
     GEMINI_API_KEY: optionalString,
     GEMINI_MODEL: z.string().default('gemini-3-flash-preview'),
+
+    STORAGE_PROVIDER: z.enum(['local', 'azure-blob']).default('local'),
+    STORAGE_LOCAL_DIR: z.string().default('./storage'),
+    AZURE_STORAGE_CONNECTION_STRING: optionalString,
+    AZURE_STORAGE_CONTAINER: z.string().default('kitacr8d-adjuntos'),
+    /** Secreto para firmar las URLs de adjuntos (si se omite se usa JWT_SECRET). */
+    ATTACHMENT_URL_SECRET: optionalString,
+    ATTACHMENT_URL_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   })
   .superRefine((env, ctx) => {
     if (env.AUTH_MODE === 'local' && (!env.JWT_SECRET || env.JWT_SECRET.length < 32)) {
       ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'Debe tener al menos 32 caracteres en AUTH_MODE=local' });
+    }
+    if (env.STORAGE_PROVIDER === 'azure-blob' && !env.AZURE_STORAGE_CONNECTION_STRING) {
+      ctx.addIssue({ code: 'custom', path: ['AZURE_STORAGE_CONNECTION_STRING'], message: 'Obligatoria con STORAGE_PROVIDER=azure-blob' });
+    }
+    if (!env.ATTACHMENT_URL_SECRET && !env.JWT_SECRET) {
+      ctx.addIssue({ code: 'custom', path: ['ATTACHMENT_URL_SECRET'], message: 'Defina ATTACHMENT_URL_SECRET (o JWT_SECRET) para firmar las URLs de adjuntos' });
     }
     if (env.AUTH_MODE === 'oidc' && (!env.OIDC_JWKS_URI || !env.OIDC_ISSUER || !env.OIDC_AUDIENCE)) {
       ctx.addIssue({ code: 'custom', path: ['OIDC_JWKS_URI'], message: 'OIDC_JWKS_URI, OIDC_ISSUER y OIDC_AUDIENCE son obligatorios en AUTH_MODE=oidc' });

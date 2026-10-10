@@ -363,5 +363,6 @@
   "acpPlanIntro": "Actions for failure mitigation.",
   "improvementPlanTitle": "Improvement Plan: {{text}}...",
   "improvementPlanIntro": "Improvement actions for opportunity identified in D1.",
-  "failureModeDefault": "Unified failure mode"
+  "failureModeDefault": "Unified failure mode",
+  "imageUploadError": "The image could not be uploaded. Make sure it is a PNG, JPG or WEBP file up to 10 MB."
 }

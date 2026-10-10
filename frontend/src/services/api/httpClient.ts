@@ -2,6 +2,9 @@ import { sessionStore } from '../../features/auth/sessionStore';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api';
 
+/** URL absoluta de un recurso de la API (por ejemplo, la URL firmada de un adjunto). */
+export const apiUrl = (path: string) => `${API_BASE_URL}${path}`;
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,

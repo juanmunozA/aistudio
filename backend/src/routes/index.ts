@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import multer from 'multer';
 import { aiController } from '../controllers/aiController.js';
+import { attachmentController } from '../controllers/attachmentController.js';
 import { authController } from '../controllers/authController.js';
 import { caseController } from '../controllers/caseController.js';
 import { documentController } from '../controllers/documentController.js';
@@ -10,6 +12,7 @@ import { caseIdParamsSchema, createCaseSchema, updateCaseSchema } from '../model
 import { acpPlansRequestSchema } from '../models/domain.js';
 import { loginSchema } from '../models/user.js';
 import { aiRequestSchema } from '../services/aiService.js';
+import { MAX_IMAGE_BYTES } from '../services/attachmentService.js';
 import { SUPPORTED_DOCUMENT_EXTENSIONS } from '../services/documentService.js';
 import { HttpError } from '../utils/httpError.js';
 
@@ -22,6 +25,9 @@ const upload = multer({
     else done(HttpError.badRequest(`Tipo de archivo no soportado: .${extension}`));
   },
 });
+
+const imageUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_IMAGE_BYTES, files: 1 } });
+const attachmentIdParams = z.object({ id: z.uuid() });
 
 export const apiRouter = Router();
 
@@ -45,3 +51,8 @@ apiRouter.post('/ai/:operation', authenticate, validate(aiRequestSchema), aiCont
 apiRouter.post('/domain/acp-plans', authenticate, validate(acpPlansRequestSchema), aiController.acpPlans);
 
 apiRouter.post('/documents/extract-text', authenticate, upload.single('file'), documentController.extractText);
+
+apiRouter.post('/attachments', authenticate, imageUpload.single('file'), attachmentController.upload);
+apiRouter.get('/attachments/:id/url', authenticate, validate(attachmentIdParams, 'params'), attachmentController.sign);
+apiRouter.get('/attachments/:id/content', validate(attachmentIdParams, 'params'), attachmentController.content);
+apiRouter.delete('/attachments/:id', authenticate, validate(attachmentIdParams, 'params'), attachmentController.remove);
