@@ -6,6 +6,7 @@ import { attachmentController } from '../controllers/attachmentController.js';
 import { authController } from '../controllers/authController.js';
 import { caseController } from '../controllers/caseController.js';
 import { documentController } from '../controllers/documentController.js';
+import { exportController, exportRequestSchema } from '../controllers/exportController.js';
 import { authenticate } from '../middlewares/authenticate.js';
 import { validate } from '../middlewares/validate.js';
 import { caseIdParamsSchema, createCaseSchema, updateCaseSchema } from '../models/case.js';
@@ -56,3 +57,5 @@ apiRouter.post('/attachments', authenticate, imageUpload.single('file'), attachm
 apiRouter.get('/attachments/:id/url', authenticate, validate(attachmentIdParams, 'params'), attachmentController.sign);
 apiRouter.get('/attachments/:id/content', validate(attachmentIdParams, 'params'), attachmentController.content);
 apiRouter.delete('/attachments/:id', authenticate, validate(attachmentIdParams, 'params'), attachmentController.remove);
+
+apiRouter.post('/exports/:type', authenticate, validate(exportRequestSchema), exportController.excel);

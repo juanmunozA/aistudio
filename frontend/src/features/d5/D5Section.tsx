@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { Tab, type AppState, type ACPPlan, type ActionStep } from '../../types';
 import { WrenchScrewdriverIcon, ArrowPathIcon, DocumentTextIcon, QuestionMarkCircleIcon, CloudArrowDownIcon, PlusCircleIcon, CheckBadgeIcon as CheckBadgeIconSolid, BoltIcon, ArrowRightIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import * as XLSX from 'xlsx';
 import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingTextarea';
 import { ResetButton } from '../../shared/components/ResetButton';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
@@ -9,6 +8,7 @@ import { buildAcpPlans } from '../../services/api/aiApi';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
 import { useAiRunner } from '../ai/useAiRunner';
+import { exportsApi } from '../../services/api/exportsApi';
 
 export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   const state = useCaseState();
@@ -102,33 +102,7 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
 
   const exportACPToCSV = () => {
     if (!state.d5_d6.acpPlans || state.d5_d6.acpPlans.length === 0) return alert(t('waitingAnalysis'));
-    const data: any[][] = [
-      ["PLAN DE ACCIONES CORRECTIVAS PERMANENTES (ACP)"],
-      ["Caso:", state.setup.caseName],
-      [],
-      ["TIPO", "TITULO", "CAUSA_RAIZ", "ID_ACCION", "ACCION", "EVIDENCIA_IMPLEMENTACION", "VERIFICACION_IMPLEMENTACION", "FECHA", "RESPONSABLE", "ESTADO"]
-    ];
-    state.d5_d6.acpPlans.forEach(plan => {
-      plan.actions.forEach(action => {
-        data.push([
-          plan.type,
-          plan.title,
-          plan.rootCause,
-          action.actionId || '',
-          action.action,
-          action.evidenceHow || '',
-          action.verificationHow || '',
-          action.timeframe,
-          action.responsible,
-          action.isFixed ? 'FIXED' : 'PENDING'
-        ]);
-      });
-    });
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Plan ACP");
-    ws['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 40 }, { wch: 40 }, { wch: 40 }, { wch: 15 }, { wch: 20 }, { wch: 15 }];
-    XLSX.writeFile(wb, `Plan_ACP_${state.setup.caseName || 'Proyecto'}.xlsx`);
+    exportsApi.downloadExcel('acp-plan', state).catch((error) => alert(error instanceof Error ? error.message : String(error)));
   };
 
   const fixedActions = (state.d5_d6.acpPlans || []).flatMap((p: ACPPlan) => p.actions || []).filter(a => a.isFixed);

@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Tab, type AppState } from '../types';
 import { ClipboardDocumentCheckIcon, ShieldCheckIcon, MagnifyingGlassIcon, WrenchScrewdriverIcon, ArrowPathIcon, BuildingOffice2Icon, AdjustmentsHorizontalIcon, QuestionMarkCircleIcon, CloudArrowDownIcon, CheckBadgeIcon, DocumentIcon, LightBulbIcon, SparklesIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, CheckBadgeIcon as CheckBadgeIconSolid, ArrowsPointingOutIcon, ArrowsPointingInIcon, BookOpenIcon } from '@heroicons/react/24/outline';
-import * as XLSX from 'xlsx';
 import { runAiOperation, type AiOperation } from '../services/api/aiApi';
 import { casesApi } from '../services/api/casesApi';
 import { caseActions, useCaseState } from '../store/caseStore';
@@ -26,6 +25,7 @@ import { TutorialModal } from '../shared/components/TutorialModal';
 import { WarningModal } from '../shared/components/WarningModal';
 import { INITIAL_STATE } from '../shared/constants/initialState';
 import { appStylesheets, handleDownloadPDF, printWindowAfter } from '../shared/utils/print';
+import { exportsApi } from '../services/api/exportsApi';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.SETUP);
@@ -133,98 +133,7 @@ export const App: React.FC = () => {
   };
 
   const exportToCSV = () => {
-    const data: any[][] = [
-      ["REPORTE ESTRUCTURADO 8D - ANÁLISIS DE CAUSA RAÍZ"],
-      ["Generado el:", new Date().toLocaleString()],
-      [],
-      ["DISCIPLINA", "SECCIÓN", "CAMPO", "VALOR"]
-    ];
-
-    // D0 Setup
-    data.push(["D0: CONFIGURACIÓN", "INFORMACIÓN GENERAL", t('startDate'), state.setup.startDate]);
-    data.push(["D0: CONFIGURACIÓN", "INFORMACIÓN GENERAL", t('caseName'), state.setup.caseName]);
-    data.push(["D0: CONFIGURACIÓN", "INFORMACIÓN GENERAL", t('responsible'), state.setup.responsible]);
-    data.push(["D0: CONFIGURACIÓN", "INFORMACIÓN GENERAL", t('caseType'), state.setup.type]);
-    data.push(["D0: CONFIGURACIÓN", "REQUISITOS", `${t('impacts')}/${t('standards')}`, (state.setup.impact || state.setup.standards || []).join(' | ')]);
-
-    // D1/D2 Definition
-    data.push(["D1/D2: DEFINICIÓN", "FENOMENOLOGÍA", t('phenomenology'), state.d2.phenomenon]);
-    if (state.d2.fiveW2H) {
-      Object.entries(state.d2.fiveW2H).forEach(([k, v]) => {
-        data.push(["D1/D2: DEFINICIÓN", "5W2H", k.toUpperCase(), String(v)]);
-      });
-    }
-
-    // Financial
-    data.push(["D1/D2: DEFINICIÓN", "IMPACTO FINANCIERO", "PÉRDIDA TOTAL", `${state.costs.totalLoss} ${state.costs.currency}`]);
-    (state.costs.breakdown || []).forEach(b => {
-      data.push(["D1/D2: DEFINICIÓN", "DETALLE COSTOS", b.category, `${b.estimated_value} | ${b.impact_description}`]);
-    });
-
-    // D3 Correction
-    if (state.d3.isNotApplicable) {
-      data.push(["D3: CORRECCIÓN", "NO APLICA", "DETALLE", "No aplica para este caso"]);
-    } else {
-      const selectedActions = state.d3.selectedCorrectiveActionIds.length > 0 
-        ? state.d3.correctiveActions.filter(a => state.d3.selectedCorrectiveActionIds.includes(a.id)) 
-        : [];
-      
-      if (selectedActions.length > 0) {
-        selectedActions.forEach((action, idx) => {
-          data.push([`D3: CORRECCIÓN (${idx + 1})`, "ACCIÓN SELECCIONADA", "DESCRIPCIÓN", action.action]);
-          data.push([`D3: CORRECCIÓN (${idx + 1})`, "ACCIÓN SELECCIONADA", "RESPONSABLE", action.responsible]);
-          data.push([`D3: CORRECCIÓN (${idx + 1})`, "ACCIÓN SELECCIONADA", "FECHA", action.implementationDate]);
-        });
-      } else {
-        data.push(["D3: CORRECCIÓN", "ACCIÓN SELECCIONADA", "DESCRIPCIÓN", '']);
-        data.push(["D3: CORRECCIÓN", "ACCIÓN SELECCIONADA", "RESPONSABLE", '']);
-        data.push(["D3: CORRECCIÓN", "ACCIÓN SELECCIONADA", "FECHA", '']);
-      }
-      data.push(["D3: CORRECCIÓN", "PLAN DE IMPLEMENTACIÓN", "DETALLE", state.d3.implementationPlan]);
-    }
-
-    // D4 RCA
-    data.push(["D4: CAUSA RAÍZ", "ISHIKAWA", t('ishikawaSummary'), state.d4.hypotheses.filter(h => state.d4.selectedHypotheses.includes(h.id)).map(h => `[${h.category}] ${h.text}`).join(' | ')]);
-    data.push(["D4: CAUSA RAÍZ", "PLAN EXPERIMENTAL", t('expSummary'), state.d4.verificationPlan]);
-    data.push(["D4: CAUSA RAÍZ", "CAUSAS CONFIRMADAS", "LISTADO", state.d4.experimentalConfirmedCauses.map(id => state.d4.gembaDiagnostics.find(d => d.hypothesisId === id)?.cause || id).join(' | ')]);
-    data.push(["D4: CAUSA RAÍZ", "MODO DE FALLA", t('unifiedFailure'), state.d4.syntheticCause?.text || state.d4.finalCause]);
-
-    (state.d4.fiveWhysHistory || []).forEach((h, idx) => {
-      data.push(["D4: CAUSA RAÍZ", "5 PORQUÉS", `ANÁLISIS ${idx+1}`, h.systemicRootCause]);
-    });
-
-    // D5 ACP
-    (state.d5_d6.acpPlans || []).forEach(p => {
-      p.actions.filter(a => a.isFixed).forEach(a => {
-        data.push(["D5: GESTIÓN ACP", "ACCIONES FIJADAS", p.title, `${a.action} | RESP: ${a.responsible} | PLAZO: ${a.timeframe}`]);
-      });
-    });
-
-    // D6 Poka-Yoke
-    (state.d5_d6.pokaYokes || []).forEach(py => {
-      data.push(["D6: POKA-YOKE", "DISPOSITIVO", py.type, `${py.description} | BENEFICIO: ${py.benefit}`]);
-    });
-
-    // Efficacy
-    (state.efficacy.protocols || []).forEach((p, idx) => {
-      data.push(["VALIDACIÓN EFICACIA", `PROTOCOLO ${idx+1}`, p.action, `${p.verificationMethod} | KPI: ${p.kpi} | FREQ: ${p.auditFrequency}`]);
-    });
-
-    // D7 A3
-    if (state.d7.a3Report) {
-      data.push(["D7: ESTÁNDARES", "RESUMEN A3", "JUSTIFICACIÓN FINANCIERA", state.d7.a3Report.financialJustification]);
-      data.push(["D7: ESTÁNDARES", "RESUMEN A3", "EVALUACIÓN DE RIESGOS", state.d7.a3Report.risks]);
-    }
-
-    // D8 Standards
-    data.push(["D8: REPORTE A3", "POE", "RESUMEN", state.d8.poe]);
-    data.push(["D8: REPORTE A3", "YOKOTEN", "DESPLIEGUE", state.d8.yokoTen]);
-
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Reporte 8D");
-    ws['!cols'] = [{ wch: 25 }, { wch: 30 }, { wch: 35 }, { wch: 80 }];
-    XLSX.writeFile(wb, `Reporte_Full_8D_${state.setup.caseName || 'Proyecto'}.xlsx`);
+    exportsApi.downloadExcel('full-report', state).catch((error) => alert(error instanceof Error ? error.message : String(error)));
   };
 
   if (!caseReady) {

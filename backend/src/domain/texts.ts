@@ -3,6 +3,16 @@ import type { Language } from '../ai/prompts/templates.js';
 // Textos por defecto que las reglas de negocio escriben en el caso (mismos del diccionario del frontend).
 const texts = {
   es: {
+    startDate: "Fecha de Inicio",
+    caseName: "Nombre del Caso",
+    responsible: "Responsable",
+    caseType: "Tipo de Caso",
+    impacts: "Impactos de la Desviación",
+    standards: "Normas de Auditoría, Estándar, Autoridades y Entes de Control (Selección Múltiple)",
+    phenomenology: "Fenomenología",
+    ishikawaSummary: "Ishikawa 6M (Causas Fijadas)",
+    expSummary: "Resumen Plan Experimental",
+    unifiedFailure: "Modo de Falla Unificado",
     areaLeader: "Líder de Área",
     additionalPotentialCause: "Causa potencial adicional...",
     implementStandardOrProcedureForThe: "Implementar estándar o procedimiento estandarizado para la oportunidad de mejora",
@@ -25,6 +35,16 @@ const texts = {
     unknownCause: "Causa Desconocida",
   },
   en: {
+    startDate: "Start Date",
+    caseName: "Case Name",
+    responsible: "Responsible",
+    caseType: "Case Type",
+    impacts: "Deviation Impacts",
+    standards: "Audit Standards, Standard, Authorities and Control Entities (Multiple Selection)",
+    phenomenology: "Phenomenology",
+    ishikawaSummary: "Ishikawa 6M (Fixed Causes)",
+    expSummary: "Experimental Plan Summary",
+    unifiedFailure: "Unified Failure Mode",
     areaLeader: "Area Leader",
     additionalPotentialCause: "Additional potential cause...",
     implementStandardOrProcedureForThe: "Implement standard or procedure for the improvement opportunity",

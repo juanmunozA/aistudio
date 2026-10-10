@@ -18,7 +18,7 @@ export function createApp() {
       origin: corsOrigins,
       methods: ['GET', 'POST', 'PUT', 'DELETE'],
       allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'],
-      exposedHeaders: ['X-Request-Id'],
+      exposedHeaders: ['X-Request-Id', 'Content-Disposition'],
       maxAge: 600,
     }),
   );

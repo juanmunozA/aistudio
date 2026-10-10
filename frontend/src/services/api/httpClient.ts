@@ -69,3 +69,32 @@ export async function apiRequest<T>(path: string, { method = 'GET', body, formDa
   }
   return payload;
 }
+
+/** Descarga un archivo generado por el backend (por ejemplo, un Excel) y lo guarda en el equipo. */
+export async function apiDownload(path: string, body: unknown, fallbackName: string): Promise<void> {
+  const token = sessionStore.getToken();
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK_ERROR', 'No hay conexión con el servidor');
+  }
+  if (!response.ok) {
+    if (response.status === 401) onUnauthorized?.();
+    const payload = (await response.json().catch(() => ({}))) as ErrorBody;
+    throw new ApiError(response.status, payload.error?.code ?? 'HTTP_ERROR', payload.error?.message ?? `Error ${response.status}`);
+  }
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+  const fileName = encodedName ? decodeURIComponent(encodedName) : fallbackName;
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}

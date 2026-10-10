@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Tab, type AppState, type Hypothesis, type FiveWhysAnalysis, type ActionStep, type ObservationValue, type FiveWhyStep, type GembaDiagnostic } from '../../types';
 import { ClipboardDocumentCheckIcon, ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon, BeakerIcon, DocumentTextIcon, QuestionMarkCircleIcon, CloudArrowDownIcon, CheckBadgeIcon, PrinterIcon, CheckIcon, SparklesIcon, Square2StackIcon, CheckBadgeIcon as CheckBadgeIconSolid, StarIcon, BoltIcon, PaperClipIcon } from '@heroicons/react/24/outline';
-import * as XLSX from 'xlsx';
 import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingTextarea';
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
@@ -12,6 +11,7 @@ import { handleDownloadPDF } from '../../shared/utils/print';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
 import { useAiRunner } from '../ai/useAiRunner';
+import { exportsApi } from '../../services/api/exportsApi';
 
 export const D4Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   const state = useCaseState();
@@ -127,25 +127,7 @@ export const D4Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
 
   const downloadGembaCSV = () => {
     if (!state.d4.gembaDiagnostics || state.d4.gembaDiagnostics.length === 0) return alert(t('noChecklistAlert'));
-    const data: any[][] = [
-      ["CHECKLIST GEMBA - VALIDACIÓN EN PISO"],
-      ["Caso:", state.setup.caseName],
-      [],
-      ["HIPOTESIS", "CATEGORIA", "PREGUNTA", "RESPUESTA AUDITADA"]
-    ];
-    state.d4.gembaDiagnostics.forEach(diag => {
-      const originalHypothesis = state.d4.hypotheses.find(h => h.id === diag.hypothesisId);
-      const checks = state.d4.observationChecks[diag.hypothesisId] || [];
-      diag.questions.forEach((q, qIdx) => {
-        const checkValue = checks[qIdx] === 'yes' ? 'SI' : checks[qIdx] === 'no' ? 'NO' : 'PENDIENTE';
-        data.push([diag.cause, originalHypothesis?.category || 'N/A', q, checkValue]);
-      });
-    });
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Gemba Checklist");
-    ws['!cols'] = [{ wch: 40 }, { wch: 20 }, { wch: 60 }, { wch: 20 }];
-    XLSX.writeFile(wb, `Checklist_GEMBA_${state.setup.caseName || 'Proyecto'}.xlsx`);
+    exportsApi.downloadExcel('gemba-checklist', state).catch((error) => alert(error instanceof Error ? error.message : String(error)));
   };
 
   const downloadExperimentalPlan = () => {
