@@ -23,18 +23,18 @@ export const D8Section = ({ t, setBanner }: SectionProps) => {
   const [score, setScore] = useState<number | null>(null);
 
   const generatePOE = () => { 
-    runAi('d7Poe', 'd7Poe', { acpPlans: state.d5_d6.acpPlans || [] }, (data) => caseActions.updateSection('d8', (current) => ({ ...current, poe: (data as string) || "" }))); 
+    runAi('d7Poe', 'd7Poe', { acpPlans: state.d5_d6.acpPlans || [] }, (result: Partial<AppState['d8']>) => caseActions.updateSection('d8', (current) => ({ ...current, ...result }))); 
   };
   
   const generateYokoTen = () => { 
     const history = state.d4.fiveWhysHistory || []; 
-    runAi('d7YokoTen', 'd7YokoTen', { phenomenon: state.d2.phenomenon, rootCauses: history.map(h => h.systemicRootCause) }, (data) => caseActions.updateSection('d8', (current) => ({ ...current, yokoTen: (data as string) || "" }))); 
+    runAi('d7YokoTen', 'd7YokoTen', { phenomenon: state.d2.phenomenon, rootCauses: history.map(h => h.systemicRootCause) }, (result: Partial<AppState['d8']>) => caseActions.updateSection('d8', (current) => ({ ...current, ...result }))); 
   };
   
   const generateQuiz = () => { 
     if (!state.d8.poe) return alert("POE first."); 
-    runAi('d7Quiz', 'd7Quiz', { poe: state.d8.poe }, (data) => { 
-      caseActions.updateSection('d8', (current) => ({ ...current, quiz: (data as any)?.questions || [] })); 
+    runAi('d7Quiz', 'd7Quiz', { poe: state.d8.poe }, (result: Partial<AppState['d8']>) => { 
+      caseActions.updateSection('d8', (current) => ({ ...current, ...result })); 
       setScore(null); 
       setAnswers({}); 
     }); 

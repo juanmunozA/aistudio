@@ -19,57 +19,12 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
     const fixedActions = (state.d5_d6.acpPlans || []).flatMap((p: ACPPlan) => p.actions || []).filter((a: any) => a.isFixed);
     if (fixedActions.length === 0) return alert(t('fixActionsInD5First'));
 
-    const actionsText = fixedActions.map((a: any) => `- [ID: ${a.actionId || 'N/A'}] ${a.action} (Responsable: ${a.responsible})`).join('\n');
-    const rootCausesText = (state.d4.fiveWhysHistory || []).map((h: any) => h.systemicRootCause).filter(Boolean).join('; ');
-    const allIds = fixedActions.map((a: any) => a.actionId || 'N/A').filter(Boolean).join('\n');
-    const today = new Date().toISOString().split('T')[0];
-    
-    runAi('efficacy', 'efficacyValidation', { acpPlans: state.d5_d6.acpPlans || [], rootCauses: (state.d4.fiveWhysHistory || []).map((h: any) => h.systemicRootCause) }, (data) => {
-      let rawProtocols = (data as any).protocols || [];
-      if (!Array.isArray(rawProtocols) || rawProtocols.length === 0) {
-        rawProtocols = [data];
-      }
-
-      const p = rawProtocols[0] || {};
-      
-      const shortDescFallback = fixedActions.map((a: any) => {
-        const words = (a.action || '').trim().split(/\s+/).slice(0, 4).join(' ');
-        return `${a.actionId ? `${a.actionId}: ` : ''}${words}`;
-      }).join('; ');
-
-      const formatIdsAsStacked = (idStr: string) => {
-        if (!idStr) return '';
-        return idStr.split(/,\s*|\n+/).map((s: string) => s.trim()).filter(Boolean).join('\n');
-      };
-
-      const rawId = (p.id && p.id.length >= 3) ? p.id : allIds;
-
-      let rawKpi = (p.kpi || '').trim();
-      if (!rawKpi) {
-        rawKpi = t('t100ComplianceInFieldVerification0');
-      } else if (!/\d/.test(rawKpi)) {
-        rawKpi = `${rawKpi} (Meta: ${t('t100Compliance0Recurrences')})`;
-      }
-
-      const unifiedProtocol: EfficacyProtocol = {
-        id: formatIdsAsStacked(rawId),
-        action: p.action || shortDescFallback,
-        verificationMethod: p.verificationMethod || '',
-        kpi: rawKpi,
-        auditFrequency: p.auditFrequency || '',
-        contingencyPlan: p.contingencyPlan || '',
-        executionResponsible: p.executionResponsible || fixedActions[0]?.responsible || state.setup.responsible || '',
-        executionDate: p.executionDate || today,
-        verificationResponsible: p.verificationResponsible || state.setup.responsible || '',
-        verificationDate: p.verificationDate || today,
-        isEffective: p.isEffective || 'SI'
-      };
-
-      caseActions.updateSection('efficacy', (current) => ({
-          ...current,
-          protocols: [unifiedProtocol]
-        }));
-    });
+    runAi<Partial<AppState['efficacy']>>(
+      'efficacy',
+      'efficacyValidation',
+      { acpPlans: state.d5_d6.acpPlans || [], rootCauses: (state.d4.fiveWhysHistory || []).map((h) => h.systemicRootCause) },
+      (result) => caseActions.updateSection('efficacy', (current) => ({ ...current, ...result })),
+    );
   };
 
   const generateGuide = (protocol: EfficacyProtocol) => {

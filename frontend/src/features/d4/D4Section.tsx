@@ -94,64 +94,11 @@ export const D4Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   };
   
   const generateIshikawa = () => {
-    const existingCauses = (state.d4.hypotheses || [])
-      .filter((h: Hypothesis) => (state.d4.selectedHypotheses || []).includes(h.id))
-      .map((h: Hypothesis) => ({ category: h.category, text: h.text }));
-
-    runAi(
-      'd4Ishikawa', 
-      'd4Ishikawa', 
-      { phenomenon: state.d2.phenomenon, existingCauses }, 
-      (data) => {
-        caseActions.updateCase((p: any) => {
-          const nextHypotheses: Hypothesis[] = [];
-          const incomingHypotheses = (data as any)?.hypotheses || [];
-          const currentD4 = p.d4 || INITIAL_STATE.d4;
-          
-          mCategories.forEach((cat: string) => {
-            // Keep selected (fixed) hypotheses for this category
-            const fixed = (currentD4.hypotheses || []).filter((h: Hypothesis) => 
-              h.category === cat && (currentD4.selectedHypotheses || []).includes(h.id)
-            );
-
-            // Filter incoming hypotheses for this category
-            const iaNew = incomingHypotheses
-              .filter((nh: any) => nh && nh.category === cat)
-              .map((nh: any, i: number) => ({ 
-                id: `h-${Date.now()}-${cat.replace(/\s+/g, '')}-${i}`, 
-                category: cat, 
-                text: nh.text || "" 
-              }));
-
-            const merged = [...fixed];
-            
-            // Add new ones from AI if they are not duplicates and we have space (up to 4 total)
-            for (const newItem of iaNew) {
-              if (merged.length < 4) {
-                const isDuplicate = merged.some(m => 
-                  m.text.trim().toLowerCase() === newItem.text.trim().toLowerCase()
-                );
-                if (!isDuplicate) {
-                  merged.push(newItem);
-                }
-              }
-            }
-
-            // Fill with placeholders if still less than 4
-            while (merged.length < 4) {
-              merged.push({ 
-                id: `h-manual-${Date.now()}-${cat.replace(/\s+/g, '')}-${merged.length}`, 
-                category: cat, 
-                text: t('additionalPotentialCause') 
-              });
-            }
-            
-            nextHypotheses.push(...merged);
-          });
-          
-          return { ...p, d4: { ...currentD4, hypotheses: nextHypotheses, step: 1 } };
-        });
-      }
+    runAi<Partial<AppState['d4']>>(
+      'd4Ishikawa',
+      'd4Ishikawa',
+      { phenomenon: state.d2.phenomenon, hypotheses: state.d4.hypotheses || [], selectedHypotheses: state.d4.selectedHypotheses || [] },
+      (result) => caseActions.updateSection('d4', (current) => ({ ...current, ...result })),
     );
   };
 
@@ -170,17 +117,12 @@ export const D4Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
 
   const generateGemba = () => {
     if ((state.d4.selectedHypotheses || []).length === 0) return alert(t('selectHypAlert'));
-    const selectedList = (state.d4.hypotheses || []).filter(h => (state.d4.selectedHypotheses || []).includes(h.id));
-    runAi('d4Gemba', 'd4Gemba', { causes: selectedList.map(h => ({ id: h.id, text: h.text })) }, (data) => {
-      const initialChecks: Record<string, ObservationValue[]> = { ...(state.d4.observationChecks || {}) };
-      const incomingDiagnostics = (data as any)?.diagnostics || [];
-      const diagnostics = incomingDiagnostics.map((d: any) => {
-        const questions = d.questions || [];
-        if (!initialChecks[d.hypothesisId]) { initialChecks[d.hypothesisId] = questions.map(() => null); }
-        return { hypothesisId: d.hypothesisId || `diag-${Date.now()}`, cause: d.cause || "", questions: questions };
-      });
-      caseActions.updateSection('d4', (current) => ({ ...current, gembaDiagnostics: diagnostics, observationChecks: initialChecks, step: 2 }));
-    });
+    runAi<Partial<AppState['d4']>>(
+      'd4Gemba',
+      'd4Gemba',
+      { hypotheses: state.d4.hypotheses || [], selectedHypotheses: state.d4.selectedHypotheses, observationChecks: state.d4.observationChecks || {} },
+      (result) => caseActions.updateSection('d4', (current) => ({ ...current, ...result })),
+    );
   };
 
   const downloadGembaCSV = () => {
@@ -213,9 +155,12 @@ export const D4Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
 
   const generateExperimentalReport = () => {
     if (confirmedGembaHypotheses.length === 0) return alert(t('noGembaConfirmAlert'));
-    runAi('d4Verify', 'd4Verify', { phenomenon: state.d2.phenomenon, causes: confirmedGembaHypotheses.map(d => d.cause) }, (data) => {
-      caseActions.updateSection('d4', (current) => ({ ...current, verificationPlan: data || "" }));
-    });
+    runAi<Partial<AppState['d4']>>(
+      'd4Verify',
+      'd4Verify',
+      { phenomenon: state.d2.phenomenon, gembaDiagnostics: state.d4.gembaDiagnostics || [], observationChecks: state.d4.observationChecks || {} },
+      (result) => caseActions.updateSection('d4', (current) => ({ ...current, ...result })),
+    );
   };
 
   const toggleHypothesis = (id: string) => {
@@ -228,15 +173,13 @@ export const D4Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
     const gembaData = state.d4.gembaDiagnostics?.find(d => d.hypothesisId === id);
     const targetText = id === state.d4.syntheticCause?.id ? state.d4.syntheticCause.text : (gembaData?.cause || "");
     const uniqueExecutionKey = `d4Whys-${id}-${Date.now()}`;
-    runAi(uniqueExecutionKey, 'd4Whys', { targetCause: targetText, gembaConclusions: state.d4.gembaConclusions }, (data) => {
-      const newAnalysis: FiveWhysAnalysis = { 
-        id: `5w-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        targetCause: targetText, 
-        whys: (data as any)?.whys || [], 
-        systemicRootCause: (data as any)?.causa_raiz_sistemica || "" 
-      };
-      caseActions.updateSection('d4', (current) => ({ ...current, fiveWhysHistory: [...(current.fiveWhysHistory || []), newAnalysis], finalCause: targetText, step: 4 }));
-    });
+    runAi<{ analysis: FiveWhysAnalysis; finalCause: string; step: number }>(
+      uniqueExecutionKey,
+      'd4Whys',
+      { targetCause: targetText, gembaConclusions: state.d4.gembaConclusions },
+      ({ analysis, finalCause, step }) =>
+        caseActions.updateSection('d4', (current) => ({ ...current, fiveWhysHistory: [...(current.fiveWhysHistory || []), analysis], finalCause, step })),
+    );
   };
 
   const updateWhyAnswer = (analysisId: string, whyIdx: number, val: string) => {
@@ -282,13 +225,12 @@ export const D4Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   const generateSyntheticCause = () => {
     const fixedIds = state.d4.fixedRootCauseIds || [];
     if (fixedIds.length === 0) return alert(t('fixAtLeastOneRootCause'));
-    const rootCauses = fixedIds.map(id => { 
-      const analysis = state.d4.fiveWhysHistory?.find(a => a.id === id);
-      return analysis?.systemicRootCause || t('unknownCause'); 
-    });
-    runAi('d4CombinedCause', 'd4CombinedCause', { phenomenon: state.d2.phenomenon, rootCauses }, (data) => {
-      caseActions.updateSection('d4', (current) => ({ ...current, syntheticCause: { id: `synth-${Date.now()}`, text: (data as any)?.synthetic_cause || t('failureModeDefault') } }));
-    });
+    runAi<Partial<AppState['d4']>>(
+      'd4CombinedCause',
+      'd4CombinedCause',
+      { phenomenon: state.d2.phenomenon, fixedRootCauseIds: fixedIds, fiveWhysHistory: state.d4.fiveWhysHistory || [] },
+      (result) => caseActions.updateSection('d4', (current) => ({ ...current, ...result })),
+    );
   };
 
   const toggleFixedRootCause = (analysisId: string) => {
@@ -305,35 +247,8 @@ export const D4Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
     const fixedIds = [...(state.d4.fixedRootCauseIds || [])];
     if (fixedIds.length === 0) return alert(t('fixAtLeastOneRootCause'));
     
-    const causes = fixedIds.map(id => {
-      if (id.startsWith('synth-')) return { id, text: state.d4.syntheticCause?.text };
-      const analysis = state.d4.fiveWhysHistory.find(a => a.id === id);
-      return { id, text: analysis?.systemicRootCause };
-    });
-    
-    runAi('d4Secondary', 'd4Secondary', { phenomenon: state.d2.phenomenon, causes }, (data) => {
-      const actionMap: Record<string, ActionStep[]> = { ...(state.d4.secondaryActions || {}) };
-      const results = (data as any)?.results || [];
-      results.forEach((r: any) => { 
-        if (r && r.hypothesisId) { 
-          const matchingId = fixedIds.find(fid => String(fid) === String(r.hypothesisId));
-          if (matchingId) { 
-            const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            actionMap[matchingId] = (r.actions || []).map((act: string, idx: number) => ({ 
-              id: `action-${matchingId}-${idx}-${Date.now()}`,
-              action: act, 
-              evidenceHow: "",
-              evidenceDate: defaultDate,
-              evidenceResponsible: t('areaLeader'),
-              verificationHow: "",
-              responsible: t('areaLeader'), 
-              timeframe: defaultDate, 
-              isFixed: false 
-            })); 
-          } 
-        } 
-      });
-      caseActions.updateSection('d4', (current) => ({ ...current, secondaryActions: actionMap }));
+    runAi<Partial<AppState['d4']>>('d4Secondary', 'd4Secondary', { phenomenon: state.d2.phenomenon, d4: state.d4 }, (result) => {
+      caseActions.updateSection('d4', (current) => ({ ...current, ...result }));
       alert(t('actionsMaterialized'));
     });
   };

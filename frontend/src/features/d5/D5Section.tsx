@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingTextarea';
 import { ResetButton } from '../../shared/components/ResetButton';
 import { INITIAL_STATE } from '../../shared/constants/initialState';
+import { buildAcpPlans } from '../../services/api/aiApi';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
 import { useAiRunner } from '../ai/useAiRunner';
@@ -30,137 +31,33 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
       return;
     }
 
-    // Check if any fixed root causes don't have actions in d4.secondaryActions
-    const missingActions = fixedIds.filter(id => {
-      const actions = d4.secondaryActions?.[id] || [];
-      return actions.length === 0;
-    });
+    // Si alguna causa raíz fijada no tiene acciones, la IA las genera y el backend arma los planes.
+    const missingActions = fixedIds.filter(id => (d4.secondaryActions?.[id] || []).length === 0);
 
     if (missingActions.length > 0 && isManualClick) {
-      const causes = fixedIds.map(id => {
-        if (id.startsWith('synth-')) return { id, text: d4.syntheticCause?.text || "" };
-        const analysis = d4.fiveWhysHistory?.find(a => a.id === id);
-        return { id, text: analysis?.systemicRootCause || "" };
-      });
-
-      runAi('d5Secondary', 'd4Secondary', { phenomenon: state.d2.phenomenon, causes }, (data: any) => {
-        const actionMap: Record<string, ActionStep[]> = { ...(d4.secondaryActions || {}) };
-        const results = data?.results || [];
-        results.forEach((r: any) => { 
-          if (r && r.hypothesisId) { 
-            const matchingId = fixedIds.find(fid => String(fid) === String(r.hypothesisId));
-            if (matchingId) { 
-              const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-              actionMap[matchingId] = (r.actions || []).map((act: string, idx: number) => ({ 
-                id: `action-${matchingId}-${idx}-${Date.now()}`,
-                action: act, 
-                evidenceHow: "",
-                evidenceDate: defaultDate,
-                evidenceResponsible: t('areaLeader'),
-                verificationHow: "",
-                responsible: t('areaLeader'), 
-                timeframe: defaultDate, 
-                isFixed: false 
-              })); 
-            } 
-          } 
-        });
-
-        const newPlans: ACPPlan[] = [];
-        const caseNumberMatch = state.setup.caseName.match(/^\d+/);
-        const caseNumber = caseNumberMatch ? caseNumberMatch[0] : "";
-        const isAudit = state.setup.type === 'Hallazgo de Auditoría, ACPM';
-        let globalActionCounter = 1;
-
-        fixedIds.forEach((id) => {
-          const actions = actionMap[id] || [];
-          if (actions.length > 0) {
-            let rootText: string;
-            if (id.startsWith('synth-')) {
-              rootText = d4.syntheticCause?.text || "";
-            } else {
-              const analysis = d4.fiveWhysHistory?.find(a => a.id === id);
-              rootText = analysis?.systemicRootCause || "";
-            }
-
-            newPlans.push({
-              id: `acp-${id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              rootCause: rootText,
-              title: t('acpPlanTitle', { text: rootText.substring(0, 40) }),
-              introduction: t('acpPlanIntro'),
-              actions: actions.map((a, idx) => ({ 
-                ...a, 
-                id: a.id || `action-${id}-${idx}-${Date.now()}`,
-                actionId: isAudit && caseNumber ? `${caseNumber}-${globalActionCounter++}` : undefined,
-                evidenceHow: a.evidenceHow || "",
-                evidenceDate: a.evidenceDate || (() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; })(),
-                evidenceResponsible: a.evidenceResponsible || (t('areaLeader')),
-                verificationHow: a.verificationHow || "",
-                isFixed: a.isFixed || false 
-              })),
-              type: id === d4.primaryCauseId ? 'primary' : 'secondary'
-            });
-          }
-        });
-
-        caseActions.updateCase((p: any) => ({
-          ...p,
-          d4: { ...p.d4, secondaryActions: actionMap },
-          d5_d6: { ...(p.d5_d6 || {}), acpPlans: newPlans }
-        }));
-        alert(t('actionsMaterialized'));
-      });
+      runAi<{ secondaryActions: AppState['d4']['secondaryActions']; acpPlans: ACPPlan[] }>(
+        'd5Secondary',
+        'd5AcpPlans',
+        { phenomenon: state.d2.phenomenon, d4 },
+        ({ secondaryActions, acpPlans }) => {
+          caseActions.updateCase((p: AppState) => ({
+            ...p,
+            d4: { ...p.d4, secondaryActions },
+            d5_d6: { ...p.d5_d6, acpPlans },
+          }));
+          alert(t('actionsMaterialized'));
+        },
+      );
       return;
     }
 
-    // Offline mapping from existing actions
-    const newPlans: ACPPlan[] = [];
-    const caseNumberMatch = state.setup.caseName.match(/^\d+/);
-    const caseNumber = caseNumberMatch ? caseNumberMatch[0] : "";
-    const isAudit = state.setup.type === 'Hallazgo de Auditoría, ACPM';
-    let globalActionCounter = 1;
-
-    fixedIds.forEach((id) => {
-      const secondaryActions = d4.secondaryActions || {};
-      const actions = secondaryActions[id] || [];
-      if (actions.length > 0) {
-        let rootText: string;
-        if (id.startsWith('synth-')) {
-          rootText = d4.syntheticCause?.text || "";
-        } else {
-          const analysis = d4.fiveWhysHistory?.find(a => a.id === id);
-          rootText = analysis?.systemicRootCause || "";
-        }
-
-        newPlans.push({
-          id: `acp-${id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          rootCause: rootText,
-          title: t('acpPlanTitle', { text: rootText.substring(0, 40) }),
-          introduction: t('acpPlanIntro'),
-          actions: actions.map((a, idx) => ({ 
-            ...a, 
-            id: a.id || `action-${id}-${idx}-${Date.now()}`,
-            actionId: isAudit && caseNumber ? `${caseNumber}-${globalActionCounter++}` : undefined,
-            evidenceHow: a.evidenceHow || "",
-            evidenceDate: a.evidenceDate || (() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; })(),
-            evidenceResponsible: a.evidenceResponsible || (t('areaLeader')),
-            verificationHow: a.verificationHow || "",
-            isFixed: a.isFixed || false 
-          })),
-          type: id === d4.primaryCauseId ? 'primary' : 'secondary'
-        });
-      }
-    });
-
-    caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: newPlans }));
-
-    if (isManualClick) {
-      if (newPlans.length > 0) {
-        alert(t('actionsMaterialized'));
-      } else {
-        alert(t('noActionsFoundInD4Please'));
-      }
-    }
+    // Sin IA: el backend arma los planes con las acciones ya generadas en D4.
+    buildAcpPlans(state)
+      .then((newPlans) => {
+        caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: newPlans }));
+        if (isManualClick) alert(newPlans.length > 0 ? t('actionsMaterialized') : t('noActionsFoundInD4Please'));
+      })
+      .catch((error) => console.error('Error building ACP plans:', error));
   };
 
   const refreshImprovementActions = () => {
@@ -177,84 +74,11 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
       return;
     }
 
-    const primaryPlanIndex = currentPlans.findIndex((p: ACPPlan) => p.type === 'primary') !== -1 
-      ? currentPlans.findIndex((p: ACPPlan) => p.type === 'primary') 
-      : 0;
-    const targetPlan = currentPlans[primaryPlanIndex];
-    const existingActions: ActionStep[] = targetPlan.actions || [];
-
-    const fixedActions = existingActions.filter(a => a.isFixed);
-    const unfixedCount = Math.max(1, 4 - fixedActions.length);
-
-    const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const caseNumberMatch = state.setup.caseName.match(/^\d+/);
-    const caseNumber = caseNumberMatch ? caseNumberMatch[0] : "";
-
-    runAi(
+    runAi<Partial<AppState['d5_d6']>>(
       'd5RefreshImprovement',
       'd5RefreshImprovement',
-      { phenomenonText, existingActions: existingActions.map(a => a.action), count: unfixedCount },
-      (data: any) => {
-        let actionList: string[] = [];
-        if (data?.results?.[0]?.actions && Array.isArray(data.results[0].actions)) {
-          actionList = data.results[0].actions;
-        } else if (Array.isArray(data?.actions)) {
-          actionList = data.actions;
-        } else if (data?.results && Array.isArray(data.results)) {
-          actionList = data.results.flatMap((r: any) => r.actions || []);
-        }
-
-        if (!actionList || actionList.length === 0) {
-          actionList = [
-            t('implementRandomGembaAuditsToEnsure'),
-            t('designAndInstallVisualPokaYoke'),
-            t('reviewAndUpdateAreaCompetencyAnd'),
-            t('establishWeeklyManagementIndicatorToMeasure')
-          ];
-        }
-
-        const newFormattedActions: ActionStep[] = actionList.slice(0, unfixedCount).map((actText: any, idx: number) => {
-          const act = typeof actText === 'string' ? actText : (actText?.action || actText?.text || String(actText));
-          const actionIdx = fixedActions.length + idx + 1;
-          return {
-            id: `action-improvement-refresh-${idx}-${Date.now()}`,
-            actionId: caseNumber ? `${caseNumber}-${actionIdx}` : `${actionIdx}`,
-            action: act,
-            evidenceHow: t('standardImplementationDocumentOrRecord'),
-            evidenceDate: defaultDate,
-            evidenceResponsible: state.setup.responsible || (t('areaLeader')),
-            verificationHow: t('gembaAuditAndKpiFollowUp'),
-            responsible: state.setup.responsible || (t('areaLeader')),
-            timeframe: defaultDate,
-            isFixed: false
-          };
-        });
-
-        const finalActions: ActionStep[] = [];
-        let newIdx = 0;
-        existingActions.forEach((a) => {
-          if (a.isFixed) {
-            finalActions.push(a);
-          } else if (newIdx < newFormattedActions.length) {
-            finalActions.push(newFormattedActions[newIdx++]);
-          }
-        });
-
-        while (newIdx < newFormattedActions.length) {
-          finalActions.push(newFormattedActions[newIdx++]);
-        }
-
-        const nextPlans = [...currentPlans];
-        nextPlans[primaryPlanIndex] = {
-          ...targetPlan,
-          actions: finalActions
-        };
-
-        caseActions.updateSection('d5_d6', (current) => ({
-            ...current,
-            acpPlans: nextPlans
-          }));
-      }
+      { phenomenonText, acpPlans: currentPlans },
+      (result) => caseActions.updateSection('d5_d6', (current) => ({ ...current, ...result })),
     );
   };
 

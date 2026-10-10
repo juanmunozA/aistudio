@@ -23,24 +23,9 @@ export const D6Section = ({ t, setBanner }: SectionProps) => {
   const generatePokaYokes = () => {
     const history = state.d4.fiveWhysHistory || [];
     if (history.length === 0) return alert(t('rcaRequired'));
-    const rootCause = history[history.length - 1].systemicRootCause;
-    runAi('d5Poka', 'd5Poka', { rootCause }, (data) => {
-      caseActions.updateCase((p: AppState) => {
-        const confirmedPoka = (p.d5_d6.pokaYokes || []).filter(py => py.isConfirmed);
-        const newSolutions = (data as any)?.solutions.map((s: any) => ({ 
-          ...s, 
-          id: `poka-${Date.now()}-${Math.random()}`, 
-          isConfirmed: false 
-        }));
-        return { 
-          ...p, 
-          d5_d6: { 
-            ...p.d5_d6, 
-            pokaYokes: [...confirmedPoka, ...newSolutions] 
-          } 
-        };
-      });
-    });
+    runAi<Partial<AppState['d5_d6']>>('d5Poka', 'd5Poka', { fiveWhysHistory: history, pokaYokes: state.d5_d6.pokaYokes || [] }, (result) =>
+      caseActions.updateSection('d5_d6', (current) => ({ ...current, ...result })),
+    );
   };
   const getPokaDetails = (id: string, solution: PokaYokeSolution) => {
     if (solution.details) return setExpandedId(expandedId === id ? null : id);

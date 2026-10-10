@@ -7,6 +7,7 @@ import { documentController } from '../controllers/documentController.js';
 import { authenticate } from '../middlewares/authenticate.js';
 import { validate } from '../middlewares/validate.js';
 import { caseIdParamsSchema, createCaseSchema, updateCaseSchema } from '../models/case.js';
+import { acpPlansRequestSchema } from '../models/domain.js';
 import { loginSchema } from '../models/user.js';
 import { aiRequestSchema } from '../services/aiService.js';
 import { SUPPORTED_DOCUMENT_EXTENSIONS } from '../services/documentService.js';
@@ -41,5 +42,6 @@ apiRouter.delete('/cases/:id', authenticate, validate(caseIdParamsSchema, 'param
 apiRouter.get('/cases/:id/history', authenticate, validate(caseIdParamsSchema, 'params'), caseController.history);
 
 apiRouter.post('/ai/:operation', authenticate, validate(aiRequestSchema), aiController.run);
+apiRouter.post('/domain/acp-plans', authenticate, validate(acpPlansRequestSchema), aiController.acpPlans);
 
 apiRouter.post('/documents/extract-text', authenticate, upload.single('file'), documentController.extractText);

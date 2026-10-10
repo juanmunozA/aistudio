@@ -362,5 +362,6 @@
   "acpPlanTitle": "PCA Plan: {{text}}...",
   "acpPlanIntro": "Actions for failure mitigation.",
   "improvementPlanTitle": "Improvement Plan: {{text}}...",
-  "improvementPlanIntro": "Improvement actions for opportunity identified in D1."
+  "improvementPlanIntro": "Improvement actions for opportunity identified in D1.",
+  "failureModeDefault": "Unified failure mode"
 }

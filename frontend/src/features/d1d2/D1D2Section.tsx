@@ -23,67 +23,10 @@ export const D1D2Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
       return;
     }
 
-    const defaultDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const caseNumberMatch = state.setup.caseName.match(/^\d+/);
-    const caseNumber = caseNumberMatch ? caseNumberMatch[0] : "";
-
-    runAi(
-      'd5Improvement',
-      'd5Improvement',
-      { phenomenonText },
-      (data: any) => {
-        let actionList: string[] = [];
-        if (data?.results?.[0]?.actions && Array.isArray(data.results[0].actions)) {
-          actionList = data.results[0].actions;
-        } else if (Array.isArray(data?.actions)) {
-          actionList = data.actions;
-        } else if (data?.results && Array.isArray(data.results)) {
-          actionList = data.results.flatMap((r: any) => r.actions || []);
-        }
-
-        if (!actionList || actionList.length === 0) {
-          actionList = [
-            t('implementStandardOrProcedureForThe'),
-            t('trainPersonnelOnTheNewWorking'),
-            t('establishOperationalControlsAndChecklistsAt'),
-            t('auditAndVerifyInGembaThe')
-          ];
-        }
-
-        const formattedActions: ActionStep[] = actionList.slice(0, 4).map((actText: any, idx: number) => {
-          const act = typeof actText === 'string' ? actText : (actText?.action || actText?.text || String(actText));
-          return {
-            id: `action-improvement-${idx}-${Date.now()}`,
-            actionId: caseNumber ? `${caseNumber}-${idx + 1}` : `${idx + 1}`,
-            action: act,
-            evidenceHow: t('standardImplementationDocumentOrRecord'),
-            evidenceDate: defaultDate,
-            evidenceResponsible: state.setup.responsible || (t('areaLeader')),
-            verificationHow: t('gembaAuditAndKpiFollowUp'),
-            responsible: state.setup.responsible || (t('areaLeader')),
-            timeframe: defaultDate,
-            isFixed: true
-          };
-        });
-
-        const newPlan: ACPPlan = {
-          id: `acp-improvement-${Date.now()}`,
-          rootCause: phenomenonText,
-          title: t('improvementPlanTitle', { text: phenomenonText.substring(0, 40) }),
-          introduction: t('improvementPlanIntro'),
-          actions: formattedActions,
-          type: 'primary'
-        };
-
-        caseActions.updateSection('d5_d6', (current) => ({
-            ...current,
-            step: 1,
-            acpPlans: [newPlan]
-          }));
-
-        setActiveTab(Tab.D5);
-      }
-    );
+    runAi<Partial<AppState['d5_d6']>>('d5Improvement', 'd5Improvement', { phenomenonText }, (result) => {
+      caseActions.updateSection('d5_d6', (current) => ({ ...current, ...result }));
+      setActiveTab?.(Tab.D5);
+    });
   };
 
   const handleResetSection = () => {
@@ -138,12 +81,7 @@ export const D1D2Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
       'd2', 
       'd2', 
       { fieldDataInput: state.d2.fieldDataInput, images: state.d2.images || [] }, 
-      (data) => caseActions.updateSection('d2', (current) => ({ 
-          ...current, 
-          phenomenon: data?.phenomenon_description || "", 
-          analysis: "", 
-          fiveW2H: data?.fiveW2H 
-        }))
+      (result: Partial<AppState['d2']>) => caseActions.updateSection('d2', (current) => ({ ...current, ...result }))
     );
   };
 
@@ -168,7 +106,7 @@ export const D1D2Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   const handleEstimateCosts = () => {
     const inputs = state.costs?.inputs || DEFAULT_COST_INPUTS;
     if (!state.d2.phenomenon) return alert(t('waitingAnalysis'));
-    runAi('costs', 'costs', { inputs, phenomenon: state.d2.phenomenon, currency: state.costs.currency }, (data) => caseActions.updateSection('costs', (current) => ({ ...current, totalLoss: data?.total_loss_estimate || "", breakdown: data?.cost_breakdown || [] })));
+    runAi('costs', 'costs', { inputs, phenomenon: state.d2.phenomenon, currency: state.costs.currency }, (result: Partial<AppState['costs']>) => caseActions.updateSection('costs', (current) => ({ ...current, ...result })));
   };
   return (
     <div className="space-y-10 animate-slide-in">

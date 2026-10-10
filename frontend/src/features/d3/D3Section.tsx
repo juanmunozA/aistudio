@@ -19,33 +19,10 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('preview');
 
   const handleGenerateActions = () => {
-    runAi(
-      'd3',
-      'd3',
-      { caseName: state.setup.caseName, phenomenon: state.d2.phenomenon },
-      (data) => {
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        
-        // Keep currently selected actions
-        const selectedActions = (state.d3.correctiveActions || []).filter((a: any) => 
-          (state.d3.selectedCorrectiveActionIds || []).includes(a.id)
-        );
-
-        const newActions = (data.actions || []).map((a: any, i: number) => ({
-          ...a,
-          implementationDate: today,
-          id: `ca-${Date.now()}-${i}`
-        }));
-
-        caseActions.updateSection('d3', (current) => ({
-            ...current,
-            correctiveActions: [...selectedActions, ...newActions],
-            // selectedCorrectiveActionIds is preserved as it is in the state
-            implementationPlan: ""
-          }));
-      }
-    );
+    const selectedActions = (state.d3.correctiveActions || []).filter((a) => (state.d3.selectedCorrectiveActionIds || []).includes(a.id));
+    runAi<Partial<AppState['d3']>>('d3', 'd3', { caseName: state.setup.caseName, phenomenon: state.d2.phenomenon, selectedActions }, (result) => {
+      caseActions.updateSection('d3', (current) => ({ ...current, ...result }));
+    });
   };
 
   const handleGenerateImplementation = () => {
@@ -56,11 +33,8 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
       'd3Impl',
       'd3Implementation',
       { actions: selectedActions.map(a => ({ action: a.action, responsible: a.responsible, implementationDate: a.implementationDate })) },
-      (data) => {
-        caseActions.updateSection('d3', (current) => ({
-            ...current,
-            implementationPlan: data || ""
-          }));
+      (result: Partial<AppState['d3']>) => {
+        caseActions.updateSection('d3', (current) => ({ ...current, ...result }));
         setViewMode('preview');
       }
     );

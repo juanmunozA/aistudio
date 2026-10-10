@@ -33,11 +33,18 @@ const optionalText = z.string().nullish();
 /** Datos comunes a todas las operaciones: idioma, configuración del caso y problema definido en D2. */
 export const aiRequestSchema = z.object({
   language: z.enum(['es', 'en']).default('es'),
+  /** Fecha local del usuario (YYYY-MM-DD). */
+  clientToday: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   setup: z
     .object({
       type: optionalText,
       standards: z.array(z.string()).nullish(),
       impact: z.array(z.string()).nullish(),
+      caseName: optionalText,
+      responsible: optionalText,
     })
     .default({}),
   problem: z
@@ -70,7 +77,18 @@ export const aiService = {
 
     const baseSystem = promptTemplates[language][operation.template];
     const system = `${composeSystemPrompt(baseSystem, language, setup)}${SYSTEM_SUFFIX}`;
-    const user = operation.buildUserContent(parsedInput.data, { language, problemContext });
+    const ctx = {
+      language,
+      problemContext,
+      clientToday: request.clientToday ?? new Date().toISOString().split('T')[0]!,
+      setup: {
+        type: setup.type,
+        caseName: request.setup.caseName ?? undefined,
+        responsible: request.setup.responsible ?? undefined,
+      },
+    };
+    const user = operation.buildUserContent(parsedInput.data, ctx);
+    const finish = (raw: unknown) => (operation.toResult ? operation.toResult(raw, parsedInput.data, ctx) : raw);
     const schemaKey = operation.responseSchema;
 
     const provider = getAiProvider();
@@ -87,7 +105,7 @@ export const aiService = {
         });
 
         if (!output || output.trim() === '') throw new AiProviderError('Respuesta vacía de la IA', true);
-        if (!schemaKey) return output;
+        if (!schemaKey) return finish(output);
 
         let parsed: unknown;
         try {
@@ -111,7 +129,7 @@ export const aiService = {
           // Se entrega igual: el cliente ya tolera variaciones en la forma de la respuesta.
           logger.warn('Respuesta de IA fuera del formato esperado', { operation: operationName, errors: validate.errors });
         }
-        return parsed;
+        return finish(parsed);
       } catch (error) {
         if (error instanceof HttpError) throw error;
         const retryable = !(error instanceof AiProviderError) || error.retryable;

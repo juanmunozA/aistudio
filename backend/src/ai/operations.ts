@@ -1,6 +1,22 @@
 import { z } from 'zod';
+import type { DomainContext } from '../domain/common.js';
+import { buildCorrectiveActions } from '../domain/d3Service.js';
+import {
+  buildFiveWhys,
+  buildGemba,
+  buildSecondaryActions,
+  buildSyntheticCause,
+  confirmedByGemba,
+  fixedRootCauses,
+  mergeIshikawa,
+  selectedHypotheses,
+} from '../domain/d4Service.js';
+import { buildAcpPlans, buildImprovementPlan, improvementTarget, mergePokaYokes, refreshImprovementPlans } from '../domain/d5Service.js';
+import { buildEfficacyProtocol } from '../domain/efficacyService.js';
+import { text as domainText } from '../domain/texts.js';
+import type { AcpPlan, ActionStep, CorrectiveAction, FiveWhysAnalysis, GembaDiagnostic, Hypothesis, ObservationValue, PokaYokeSolution } from '../domain/types.js';
 import type { ResponseSchemaKey } from './prompts/responseSchemas.js';
-import type { Language, TemplateKey } from './prompts/templates.js';
+import type { TemplateKey } from './prompts/templates.js';
 
 export interface ImagePart {
   mimeType: string;
@@ -12,8 +28,7 @@ export interface UserContent {
   images?: ImagePart[];
 }
 
-export interface BuildContext {
-  language: Language;
+export interface BuildContext extends DomainContext {
   /** Contexto del problema definido en D2 (vacío si aún no existe). */
   problemContext: string;
 }
@@ -24,6 +39,10 @@ export interface OperationDefinition<TInput> {
   responseSchema: ResponseSchemaKey | null;
   input: z.ZodType<TInput>;
   buildUserContent: (input: TInput, ctx: BuildContext) => UserContent;
+  /** Regla de negocio de la disciplina: convierte la respuesta de la IA en los datos que se guardan en el caso. */
+  // La respuesta ya fue validada contra su schema; cada regla lee solo los campos que necesita.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  toResult?: (raw: any, input: TInput, ctx: BuildContext) => unknown;
 }
 
 const text = z
@@ -31,8 +50,6 @@ const text = z
   .nullish()
   .transform((value) => value ?? '');
 const optionalText = z.string().nullish();
-
-const causeRef = z.object({ id: z.string(), text: optionalText });
 
 const acpAction = z.object({
   actionId: optionalText,
@@ -48,9 +65,21 @@ const acpPlan = z.object({
   actions: z.array(acpAction).default([]),
 });
 
+// Fragmentos del caso que algunas reglas necesitan; se validan de forma laxa porque los define el propio modelo del caso.
+const looseArray = <T,>() => z.array(z.unknown()).default([]).transform((items) => items as T[]);
+const looseRecord = <T,>() => z.record(z.string(), z.unknown()).default({}).transform((value) => value as Record<string, T>);
+
+const d4Snapshot = z.object({
+  fixedRootCauseIds: z.array(z.string()).default([]),
+  fiveWhysHistory: looseArray<FiveWhysAnalysis>(),
+  syntheticCause: z.object({ id: z.string(), text: z.string() }).nullish().transform((value) => value ?? null),
+  secondaryActions: looseRecord<ActionStep[]>(),
+  primaryCauseId: z.string().nullish().transform((value) => value ?? null),
+});
+
 const fixedActionsOf = (plans: z.infer<typeof acpPlan>[]) => plans.flatMap((plan) => plan.actions || []).filter((a) => a.isFixed);
 
-const causesPayload = (causes: z.infer<typeof causeRef>[]) =>
+const causesPayload = (causes: { id: string; text?: string | null }[]) =>
   causes.map((item) => `hypothesisId: ${item.id} | cause: ${item.text}`).join('\n');
 
 const dataUrlToImage = (dataUrl: string): ImagePart => {
@@ -77,6 +106,7 @@ export const aiOperations = {
         (images.length > 0 ? 'Analyze the provided images to extract the problem description.' : 'Analyze the provided information.'),
       images: images.map(dataUrlToImage),
     }),
+    toResult: (raw) => ({ phenomenon: raw?.phenomenon_description || '', analysis: '', fiveW2H: raw?.fiveW2H }),
   }),
 
   costs: define({
@@ -93,15 +123,20 @@ export const aiOperations = {
         text: `Datos de costos tangibles del usuario: ${costSummary || 'Sin costos tangibles reportados'}. Fenómeno: ${phenomenon}. Moneda seleccionada: ${currency}.`,
       };
     },
+    toResult: (raw) => ({ totalLoss: raw?.total_loss_estimate || '', breakdown: raw?.cost_breakdown || [] }),
   }),
 
   d3: define({
     template: 'd3',
     temperature: 0.3,
     responseSchema: 'd3',
-    input: z.object({ caseName: text, phenomenon: text }),
+    input: z.object({ caseName: text, phenomenon: text, selectedActions: looseArray<CorrectiveAction>() }),
     buildUserContent: ({ caseName, phenomenon }, { problemContext }) => ({
       text: `Case: ${caseName}. Phenomenon: ${phenomenon}.${problemContext}`,
+    }),
+    toResult: (raw, { selectedActions }, ctx) => ({
+      correctiveActions: buildCorrectiveActions(raw?.actions || [], selectedActions, ctx.clientToday),
+      implementationPlan: '',
     }),
   }),
 
@@ -119,6 +154,7 @@ export const aiOperations = {
         .join('\n');
       return { text: `${actionsText}${problemContext}` };
     },
+    toResult: (raw) => ({ implementationPlan: raw || '' }),
   }),
 
   d4Ishikawa: define({
@@ -127,35 +163,64 @@ export const aiOperations = {
     responseSchema: 'd4Ishikawa',
     input: z.object({
       phenomenon: text,
-      existingCauses: z.array(z.object({ category: z.string(), text: optionalText })).default([]),
+      hypotheses: looseArray<Hypothesis>(),
+      selectedHypotheses: z.array(z.string()).default([]),
     }),
-    buildUserContent: ({ phenomenon, existingCauses }, { problemContext }) => {
-      const existing = existingCauses.map((c) => `[${c.category}]: ${c.text}`).join('; ');
+    buildUserContent: ({ phenomenon, hypotheses, selectedHypotheses: selectedIds }, { problemContext }) => {
+      const existing = selectedHypotheses(hypotheses, selectedIds)
+        .map((c) => `[${c.category}]: ${c.text}`)
+        .join('; ');
       const suffix = existing ? `\n\nEXISTING CAUSES (DO NOT REPEAT THESE, GENERATE NEW AND DIFFERENT ONES): ${existing}` : '';
       return { text: `Phenomenon: ${phenomenon}${problemContext}${suffix}` };
     },
+    toResult: (raw, { hypotheses, selectedHypotheses: selectedIds }, ctx) => ({
+      hypotheses: mergeIshikawa(ctx.language, raw?.hypotheses || [], hypotheses, selectedIds),
+      step: 1,
+    }),
   }),
 
   d4Gemba: define({
     template: 'd4Gemba',
     temperature: 0.3,
     responseSchema: 'd4Gemba',
-    input: z.object({ causes: z.array(causeRef).min(1) }),
-    buildUserContent: ({ causes }, { problemContext }) => {
-      const causesText = causes.map((h) => `ID: ${h.id} - Cause: ${h.text}`).join(', ');
+    input: z
+      .object({
+        hypotheses: looseArray<Hypothesis>(),
+        selectedHypotheses: z.array(z.string()).default([]),
+        observationChecks: looseRecord<ObservationValue[]>(),
+      })
+      .refine((value) => selectedHypotheses(value.hypotheses, value.selectedHypotheses).length > 0, {
+        message: 'Debe fijar al menos una hipótesis',
+      }),
+    buildUserContent: ({ hypotheses, selectedHypotheses: selectedIds }, { problemContext }) => {
+      const causesText = selectedHypotheses(hypotheses, selectedIds)
+        .map((h) => `ID: ${h.id} - Cause: ${h.text}`)
+        .join(', ');
       return { text: `Causes to audit: ${causesText}.${problemContext}` };
     },
+    toResult: (raw, { observationChecks }) => ({ ...buildGemba(raw?.diagnostics || [], observationChecks), step: 2 }),
   }),
 
   d4Verify: define({
     template: 'd4Verify',
     temperature: 0.4,
     responseSchema: null,
-    input: z.object({ phenomenon: text, causes: z.array(optionalText).min(1) }),
-    buildUserContent: ({ phenomenon, causes }, { problemContext }) => {
-      const causesText = causes.map((cause) => `- Cause: ${cause}`).join('\n');
+    input: z
+      .object({
+        phenomenon: text,
+        gembaDiagnostics: looseArray<GembaDiagnostic>(),
+        observationChecks: looseRecord<ObservationValue[]>(),
+      })
+      .refine((value) => confirmedByGemba(value.gembaDiagnostics, value.observationChecks).length > 0, {
+        message: 'No hay causas confirmadas en el Gemba',
+      }),
+    buildUserContent: ({ phenomenon, gembaDiagnostics, observationChecks }, { problemContext }) => {
+      const causesText = confirmedByGemba(gembaDiagnostics, observationChecks)
+        .map((diagnostic) => `- Cause: ${diagnostic.cause}`)
+        .join('\n');
       return { text: `PHENOMENON: ${phenomenon}\n\nLIST OF CAUSES:\n${causesText}${problemContext}` };
     },
+    toResult: (raw) => ({ verificationPlan: raw || '' }),
   }),
 
   d4Whys: define({
@@ -169,26 +234,53 @@ export const aiOperations = {
         : '';
       return { text: `Confirmed: ${targetCause}.${problemContext}${conclusions}` };
     },
+    toResult: (raw, { targetCause }) => ({ analysis: buildFiveWhys(targetCause, raw), finalCause: targetCause, step: 4 }),
   }),
 
   d4CombinedCause: define({
     template: 'd4CombinedCause',
     temperature: 0.5,
     responseSchema: 'd4CombinedCause',
-    input: z.object({ phenomenon: text, rootCauses: z.array(optionalText).min(1) }),
-    buildUserContent: ({ phenomenon, rootCauses }, { problemContext }) => ({
-      text: `PHENOMENON: ${phenomenon}\nROOT CAUSES: ${rootCauses.join('; ')}${problemContext}`,
+    input: z.object({
+      phenomenon: text,
+      fixedRootCauseIds: z.array(z.string()).min(1),
+      fiveWhysHistory: looseArray<FiveWhysAnalysis>(),
     }),
+    buildUserContent: ({ phenomenon, fixedRootCauseIds, fiveWhysHistory }, { problemContext, language }) => {
+      const rootCauses = fixedRootCauseIds.map(
+        (id) => fiveWhysHistory.find((analysis) => analysis.id === id)?.systemicRootCause || domainText(language, 'unknownCause'),
+      );
+      return { text: `PHENOMENON: ${phenomenon}\nROOT CAUSES: ${rootCauses.join('; ')}${problemContext}` };
+    },
+    toResult: (raw, _input, ctx) => ({ syntheticCause: buildSyntheticCause(ctx.language, raw) }),
   }),
 
   d4Secondary: define({
     template: 'd4Secondary',
     temperature: 0.4,
     responseSchema: 'd4Secondary',
-    input: z.object({ phenomenon: text, causes: z.array(causeRef).min(1) }),
-    buildUserContent: ({ phenomenon, causes }, { problemContext }) => ({
-      text: `PHENOMENON: ${phenomenon}\n\nCAUSES LIST:\n${causesPayload(causes)}${problemContext}`,
+    input: z.object({ phenomenon: text, d4: d4Snapshot.refine((d4) => d4.fixedRootCauseIds.length > 0) }),
+    buildUserContent: ({ phenomenon, d4 }, { problemContext }) => ({
+      text: `PHENOMENON: ${phenomenon}\n\nCAUSES LIST:\n${causesPayload(fixedRootCauses(d4.fixedRootCauseIds, d4.fiveWhysHistory, d4.syntheticCause))}${problemContext}`,
     }),
+    toResult: (raw, { d4 }, ctx) => ({
+      secondaryActions: buildSecondaryActions(ctx.language, raw, d4.fixedRootCauseIds, d4.secondaryActions),
+    }),
+  }),
+
+  /** D5: genera las acciones que faltan por causa raíz y arma los planes ACP. */
+  d5AcpPlans: define({
+    template: 'd4Secondary',
+    temperature: 0.4,
+    responseSchema: 'd4Secondary',
+    input: z.object({ phenomenon: text, d4: d4Snapshot.refine((d4) => d4.fixedRootCauseIds.length > 0) }),
+    buildUserContent: ({ phenomenon, d4 }, { problemContext }) => ({
+      text: `PHENOMENON: ${phenomenon}\n\nCAUSES LIST:\n${causesPayload(fixedRootCauses(d4.fixedRootCauseIds, d4.fiveWhysHistory, d4.syntheticCause))}${problemContext}`,
+    }),
+    toResult: (raw, { d4 }, ctx) => {
+      const secondaryActions = buildSecondaryActions(ctx.language, raw, d4.fixedRootCauseIds, d4.secondaryActions);
+      return { secondaryActions, acpPlans: buildAcpPlans(ctx, d4, secondaryActions) };
+    },
   }),
 
   d5Improvement: define({
@@ -199,6 +291,7 @@ export const aiOperations = {
     buildUserContent: ({ phenomenonText }, { problemContext }) => ({
       text: `OPORTUNIDAD DE MEJORA / FENÓMENO: ${phenomenonText}\n\nGenera exactamente 4 acciones concretas de mejora (ACP) para esta Oportunidad de Mejora.${problemContext}`,
     }),
+    toResult: (raw, { phenomenonText }, ctx) => ({ acpPlans: [buildImprovementPlan(ctx, raw, phenomenonText)], step: 1 }),
   }),
 
   d5RefreshImprovement: define({
@@ -207,12 +300,15 @@ export const aiOperations = {
     responseSchema: 'd4Secondary',
     input: z.object({
       phenomenonText: z.string().min(1),
-      existingActions: z.array(optionalText).default([]),
-      count: z.number().int().min(1).max(10),
+      acpPlans: looseArray<AcpPlan>().refine((plans) => plans.length > 0, { message: 'No hay un plan de acciones generado' }),
     }),
-    buildUserContent: ({ phenomenonText, existingActions, count }, { problemContext }) => ({
-      text: `OPORTUNIDAD DE MEJORA / FENÓMENO: ${phenomenonText}\n\nACCIONES EXISTENTES (NO REPETIR): ${existingActions.join(' | ')}\n\nGenera exactamente ${count} acciones concretas de mejora NUEVAS y DIFERENTES a las existentes.${problemContext}`,
-    }),
+    buildUserContent: ({ phenomenonText, acpPlans }, { problemContext }) => {
+      const { existing, newCount } = improvementTarget(acpPlans);
+      return {
+        text: `OPORTUNIDAD DE MEJORA / FENÓMENO: ${phenomenonText}\n\nACCIONES EXISTENTES (NO REPETIR): ${existing.map((a) => a.action).join(' | ')}\n\nGenera exactamente ${newCount} acciones concretas de mejora NUEVAS y DIFERENTES a las existentes.${problemContext}`,
+      };
+    },
+    toResult: (raw, { acpPlans }, ctx) => ({ acpPlans: refreshImprovementPlans(ctx, raw, acpPlans) }),
   }),
 
   d5Implementation: define({
@@ -229,8 +325,14 @@ export const aiOperations = {
     template: 'd5Poka',
     temperature: 0.5,
     responseSchema: 'd5Poka',
-    input: z.object({ rootCause: optionalText }),
-    buildUserContent: ({ rootCause }, { problemContext }) => ({ text: `Root Cause: ${rootCause}${problemContext}` }),
+    input: z.object({
+      fiveWhysHistory: looseArray<FiveWhysAnalysis>().refine((history) => history.length > 0, { message: 'Se requiere un análisis de causa raíz' }),
+      pokaYokes: looseArray<PokaYokeSolution>(),
+    }),
+    buildUserContent: ({ fiveWhysHistory }, { problemContext }) => ({
+      text: `Root Cause: ${fiveWhysHistory[fiveWhysHistory.length - 1]?.systemicRootCause}${problemContext}`,
+    }),
+    toResult: (raw, { pokaYokes }) => ({ pokaYokes: mergePokaYokes(pokaYokes, raw?.solutions || []) }),
   }),
 
   pokaDetail: define({
@@ -331,6 +433,7 @@ export const aiOperations = {
     `,
       };
     },
+    toResult: (raw) => ({ a3Report: raw }),
   }),
 
   d7Poe: define({
@@ -344,6 +447,7 @@ export const aiOperations = {
         .join('; ');
       return { text: `ACTIONS: ${actions}` };
     },
+    toResult: (raw) => ({ poe: raw || '' }),
   }),
 
   d7YokoTen: define({
@@ -352,6 +456,7 @@ export const aiOperations = {
     responseSchema: null,
     input: z.object({ phenomenon: text, rootCauses: z.array(optionalText).default([]) }),
     buildUserContent: ({ phenomenon, rootCauses }) => ({ text: `PHENOMENON: ${phenomenon}\nROOT: ${rootCauses.join('; ')}` }),
+    toResult: (raw) => ({ yokoTen: raw || '' }),
   }),
 
   d7Quiz: define({
@@ -360,6 +465,7 @@ export const aiOperations = {
     responseSchema: 'd7Quiz',
     input: z.object({ poe: z.string().min(1) }),
     buildUserContent: ({ poe }) => ({ text: `POE: ${poe}` }),
+    toResult: (raw) => ({ quiz: raw?.questions || [] }),
   }),
 
   efficacyValidation: define({
@@ -374,6 +480,9 @@ export const aiOperations = {
       const rootCausesText = rootCauses.filter(Boolean).join('; ');
       return { text: `CAUSAS RAIZ:\n${rootCausesText}\n\nACCIONES GENERADAS EN D5:\n${actionsText}` };
     },
+    toResult: (raw, { acpPlans }, ctx) => ({
+      protocols: [buildEfficacyProtocol(ctx, raw, fixedActionsOf(acpPlans) as ActionStep[])],
+    }),
   }),
 
   verificationGuide: define({

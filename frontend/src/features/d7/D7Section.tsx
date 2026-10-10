@@ -46,7 +46,7 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
       })),
       responsible: state.setup.responsible,
       generatedOn: new Date().toLocaleDateString(),
-    }, (data) => caseActions.updateSection('d7', (current) => ({ a3Report: (data as any) })));
+    }, (result: AppState['d7']) => caseActions.updateSection('d7', () => result));
   };
 
   const updateA3Field = (field: keyof A3ReportData, val: any) => {
