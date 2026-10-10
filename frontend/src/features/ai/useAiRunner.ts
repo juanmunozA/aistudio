@@ -12,7 +12,7 @@ export function useAiRunner() {
   const setLoadingKey = useCaseStore((store) => store.setLoadingKey);
 
   const runAi = useCallback(
-    async <T = any>(key: string, operation: AiOperation, input: unknown, onResult?: (data: T) => void) => {
+    async <T = unknown>(key: string, operation: AiOperation, input: unknown, onResult?: (data: T) => void) => {
       const current = caseActions.getCase();
       setLoadingKey(key);
       try {

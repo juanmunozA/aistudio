@@ -4,7 +4,6 @@ import { QuestionMarkCircleIcon, CheckBadgeIcon, PrinterIcon, CheckIcon } from '
 import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingTextarea';
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
-import { INITIAL_STATE } from '../../shared/constants/initialState';
 import { handleDownloadPDF } from '../../shared/utils/print';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
@@ -14,7 +13,7 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
   const state = useCaseState();
   const { runAi, loading } = useAiRunner();
   const handleResetSection = () => {
-    caseActions.updateSection('d7', (current) => INITIAL_STATE.d7);
+    caseActions.resetSection('d7');
   };
 
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('preview');
@@ -49,7 +48,7 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
     }, (result: AppState['d7']) => caseActions.updateSection('d7', () => result));
   };
 
-  const updateA3Field = (field: keyof A3ReportData, val: any) => {
+  const updateA3Field = <K extends keyof A3ReportData>(field: K, val: A3ReportData[K]) => {
     caseActions.updateCase((p: AppState) => {
       if (!p.d7.a3Report) return p;
       return { ...p, d7: { ...p.d7, a3Report: { ...p.d7.a3Report, [field]: val } } };
@@ -161,7 +160,7 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
                 <div className={`p-8 bg-blue-50 border border-blue-100 rounded-3xl h-auto flex flex-col transition-all ${viewMode === 'edit' ? 'ring-2 ring-blue-300 ring-offset-2 shadow-inner' : ''}`}>
                   <h3 className="text-xs font-black text-blue-900 uppercase tracking-widest mb-4 flex items-center gap-2">1. {t('defProblem')}</h3>
                   {viewMode === 'edit' ? (
-                    <AutoExpandingTextarea value={state.d7.a3Report.phenomenon} onChange={(e: any) => updateA3Field('phenomenon', e.target.value)} className="bg-white border border-blue-100 rounded-xl p-4 text-sm font-bold text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-blue-200" />
+                    <AutoExpandingTextarea value={state.d7.a3Report.phenomenon} onChange={(e) => updateA3Field('phenomenon', e.target.value)} className="bg-white border border-blue-100 rounded-xl p-4 text-sm font-bold text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-blue-200" />
                   ) : (
                     <p className="text-sm font-bold text-slate-700 leading-relaxed italic">"{state.d7.a3Report.phenomenon}"</p>
                   )}
@@ -171,7 +170,7 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
                   <div className={`p-8 bg-amber-50 border border-amber-100 rounded-3xl h-auto flex flex-col transition-all ${viewMode === 'edit' ? 'ring-2 ring-amber-300 ring-offset-2 shadow-inner' : ''}`}>
                     <h3 className="text-xs font-black text-amber-900 uppercase tracking-widest mb-4">2. {t('financialJustTitle')}</h3>
                     {viewMode === 'edit' ? (
-                      <AutoExpandingTextarea value={state.d7.a3Report.financialJustification} onChange={(e: any) => updateA3Field('financialJustification', e.target.value)} className="bg-white border border-amber-100 rounded-xl p-4 text-sm font-bold text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-amber-200" />
+                      <AutoExpandingTextarea value={state.d7.a3Report.financialJustification} onChange={(e) => updateA3Field('financialJustification', e.target.value)} className="bg-white border border-amber-100 rounded-xl p-4 text-sm font-bold text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-amber-200" />
                     ) : (
                       <p className="text-sm font-bold text-slate-700 leading-relaxed">{state.d7.a3Report.financialJustification}</p>
                     )}
@@ -179,7 +178,7 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
                   <div className={`p-8 bg-red-50 border border-red-100 rounded-3xl h-auto flex flex-col transition-all ${viewMode === 'edit' ? 'ring-2 ring-red-300 ring-offset-2 shadow-inner' : ''}`}>
                     <h3 className="text-xs font-black text-red-900 uppercase tracking-widest mb-4">3. {t('riskEvalTitle')}</h3>
                     {viewMode === 'edit' ? (
-                      <AutoExpandingTextarea value={state.d7.a3Report.risks} onChange={(e: any) => updateA3Field('risks', e.target.value)} className="bg-white border border-red-100 rounded-xl p-4 text-sm text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-red-200" />
+                      <AutoExpandingTextarea value={state.d7.a3Report.risks} onChange={(e) => updateA3Field('risks', e.target.value)} className="bg-white border border-red-100 rounded-xl p-4 text-sm text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-red-200" />
                     ) : (
                       <div className="text-sm text-slate-700 leading-relaxed">{renderStyledMarkdown(state.d7.a3Report.risks)}</div>
                     )}
@@ -189,7 +188,7 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
                 <div className={`p-8 bg-emerald-50 border border-emerald-100 rounded-3xl h-auto flex flex-col transition-all ${viewMode === 'edit' ? 'ring-2 ring-emerald-300 ring-offset-2 shadow-inner' : ''}`}>
                   <h3 className="text-xs font-black text-emerald-900 uppercase tracking-widest mb-4">4. {t('finalCausesTitle')}</h3>
                   {viewMode === 'edit' ? (
-                    <AutoExpandingTextarea value={state.d7.a3Report.rootCauses} onChange={(e: any) => updateA3Field('rootCauses', e.target.value)} className="bg-white border border-emerald-100 rounded-xl p-4 text-sm text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-emerald-200" />
+                    <AutoExpandingTextarea value={state.d7.a3Report.rootCauses} onChange={(e) => updateA3Field('rootCauses', e.target.value)} className="bg-white border border-emerald-100 rounded-xl p-4 text-sm text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-emerald-200" />
                   ) : (
                     <p className="text-sm text-slate-700 leading-relaxed">{state.d7.a3Report.rootCauses}</p>
                   )}
@@ -198,7 +197,7 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
                 <div className={`p-8 bg-indigo-50 border border-indigo-100 rounded-3xl h-auto flex flex-col transition-all ${viewMode === 'edit' ? 'ring-2 ring-indigo-300 ring-offset-2 shadow-inner' : ''}`}>
                   <h3 className="text-xs font-black text-indigo-900 uppercase tracking-widest mb-4">6. {t('standardizationTitle')}</h3>
                   {viewMode === 'edit' ? (
-                    <AutoExpandingTextarea value={state.d7.a3Report.standardization} onChange={(e: any) => updateA3Field('standardization', e.target.value)} className="bg-white border border-indigo-100 rounded-xl p-4 text-sm text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-indigo-200" />
+                    <AutoExpandingTextarea value={state.d7.a3Report.standardization} onChange={(e) => updateA3Field('standardization', e.target.value)} className="bg-white border border-indigo-100 rounded-xl p-4 text-sm text-slate-700 outline-none shadow-sm focus:ring-2 focus:ring-indigo-200" />
                   ) : (
                     <p className="text-sm text-slate-700 leading-relaxed">{state.d7.a3Report.standardization}</p>
                   )}
@@ -233,7 +232,7 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
                               </span>
                             </div>
                             {viewMode === 'edit' ? (
-                              <AutoExpandingTextarea value={a.action} onChange={(e: any) => updateA3Action(idx, e.target.value)} className="bg-transparent text-[11px] font-bold text-slate-600 outline-none w-full" />
+                              <AutoExpandingTextarea value={a.action} onChange={(e) => updateA3Action(idx, e.target.value)} className="bg-transparent text-[11px] font-bold text-slate-600 outline-none w-full" />
                             ) : (
                               <span className="text-[11px] font-bold text-slate-600 leading-tight">{a.action}</span>
                             )}
@@ -272,8 +271,8 @@ export const D7Section = ({ t, setBanner }: SectionProps) => {
                             <div className="space-y-1">
                               {viewMode === 'edit' ? (
                                 <>
-                                  <AutoExpandingTextarea value={s.action} onChange={(e: any) => updateEfficacyStepField(idx, 'action', e.target.value)} className="bg-transparent text-[10px] font-bold text-slate-600 outline-none w-full" placeholder="Action" />
-                                  <AutoExpandingTextarea value={s.method} onChange={(e: any) => updateEfficacyStepField(idx, 'method', e.target.value)} className="bg-transparent text-[9px] text-slate-400 outline-none w-full" placeholder="Method" />
+                                  <AutoExpandingTextarea value={s.action} onChange={(e) => updateEfficacyStepField(idx, 'action', e.target.value)} className="bg-transparent text-[10px] font-bold text-slate-600 outline-none w-full" placeholder="Action" />
+                                  <AutoExpandingTextarea value={s.method} onChange={(e) => updateEfficacyStepField(idx, 'method', e.target.value)} className="bg-transparent text-[9px] text-slate-400 outline-none w-full" placeholder="Method" />
                                   <div className="flex items-center gap-2 mt-1">
                                     <span className="text-[8px] font-bold text-slate-400 uppercase">Eficaz:</span>
                                     <input 

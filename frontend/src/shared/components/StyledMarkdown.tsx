@@ -14,7 +14,7 @@ export const renderStyledMarkdown = (text: string) => {
     if (isPossiblyJson) {
       const parsed = JSON.parse(contentToProcess);
       if (typeof parsed === 'object' && parsed !== null) {
-        const flattenToMarkdown = (obj: any, depth = 0): string => {
+        const flattenToMarkdown = (obj: unknown, depth = 0): string => {
           let output = "";
           if (Array.isArray(obj)) {
             obj.forEach((item) => {

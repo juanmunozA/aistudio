@@ -1,38 +1,11 @@
+import type { TranslateFn } from '../../i18n';
 import { type AppState } from '../../types';
 import { QueueListIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
 import { mCategoriesLocal } from '../../shared/constants/catalogs';
 
-export const FullReportTemplate = ({ state, t }: { state: AppState, t: any }) => {
-  const mCategories = (mCategoriesLocal as any)[state.language] || mCategoriesLocal.es;
+export const FullReportTemplate = ({ state, t }: { state: AppState; t: TranslateFn }) => {
+  const mCategories = mCategoriesLocal[state.language] ?? mCategoriesLocal.es;
 
-  // Pre-calculate all fixed actions to get global index for Audit Findings
-  const allFixedActions = state.d5_d6.acpPlans.flatMap(p => p.actions.filter(a => a.isFixed));
-  const caseNumberMatch = state.setup.caseName.match(/\d+/);
-  const caseId = caseNumberMatch ? caseNumberMatch[0] : "";
-
-  const extractSpecificSections = (text: string, sectionKeywords: string[]) => {
-    if (!text) return "";
-    const lines = text.split('\n');
-    let result = "";
-    let isCapturing = false;
-
-    for (const line of lines) {
-      const upperLine = line.toUpperCase();
-      if (line.includes('**')) {
-        const isTargetHeader = sectionKeywords.some(kw => upperLine.includes(kw.toUpperCase()));
-        if (isTargetHeader) {
-          isCapturing = true;
-        } else {
-          isCapturing = false;
-        }
-      }
-      
-      if (isCapturing) {
-        result += line + '\n';
-      }
-    }
-    return result.trim();
-  };
 
   return (
     <div className="official-document p-10 space-y-8 bg-white text-slate-900">

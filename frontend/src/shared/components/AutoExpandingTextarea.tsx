@@ -1,6 +1,12 @@
-import { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 
-export const AutoExpandingTextarea = ({ value, onChange, className, placeholder, disabled, style, onClick }: any) => {
+type AutoExpandingTextareaProps = Pick<
+  React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+  'value' | 'onChange' | 'className' | 'placeholder' | 'disabled' | 'style' | 'onClick'
+>;
+
+/** Textarea que crece con su contenido. */
+export const AutoExpandingTextarea = ({ value, onChange, className, placeholder, disabled, style, onClick }: AutoExpandingTextareaProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {

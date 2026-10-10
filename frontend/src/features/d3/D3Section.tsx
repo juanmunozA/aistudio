@@ -4,7 +4,6 @@ import { ShieldCheckIcon, CheckCircleIcon, QuestionMarkCircleIcon, RocketLaunchI
 import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingTextarea';
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
-import { INITIAL_STATE } from '../../shared/constants/initialState';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
 import { useAiRunner } from '../ai/useAiRunner';
@@ -13,7 +12,7 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   const state = useCaseState();
   const { runAi, loading } = useAiRunner();
   const handleResetSection = () => {
-    caseActions.updateSection('d3', (current) => INITIAL_STATE.d3);
+    caseActions.resetSection('d3');
   };
 
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('preview');
@@ -26,7 +25,7 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   };
 
   const handleGenerateImplementation = () => {
-    const selectedActions = state.d3.correctiveActions.filter((a: any) => state.d3.selectedCorrectiveActionIds.includes(a.id));
+    const selectedActions = state.d3.correctiveActions.filter((a) => state.d3.selectedCorrectiveActionIds.includes(a.id));
     if (selectedActions.length === 0) return;
 
     runAi(
@@ -40,7 +39,7 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
     );
   };
 
-  const selectedActions = state.d3.correctiveActions.filter((a: any) => state.d3.selectedCorrectiveActionIds.includes(a.id));
+  const selectedActions = state.d3.correctiveActions.filter((a) => state.d3.selectedCorrectiveActionIds.includes(a.id));
 
   return (
     <div className="space-y-10 animate-slide-in">
@@ -123,10 +122,10 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {state.d3.correctiveActions.map((action: any) => (
+            {state.d3.correctiveActions.map((action) => (
             <div
               key={action.id}
-              onClick={() => caseActions.updateCase((p: any) => {
+              onClick={() => caseActions.updateCase((p) => {
                 const currentIds = p.d3.selectedCorrectiveActionIds || [];
                 const nextIds = currentIds.includes(action.id)
                   ? currentIds.filter((id: string) => id !== action.id)
@@ -149,11 +148,11 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
               </div>
               <AutoExpandingTextarea
                 value={action.action}
-                onChange={(e: any) => {
-                  const nextActions = state.d3.correctiveActions.map((a: any) => a.id === action.id ? { ...a, action: e.target.value } : a);
+                onChange={(e) => {
+                  const nextActions = state.d3.correctiveActions.map((a) => a.id === action.id ? { ...a, action: e.target.value } : a);
                   caseActions.updateSection('d3', (current) => ({ ...current, correctiveActions: nextActions }));
                 }}
-                onClick={(e: any) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
                 className="bg-transparent text-sm font-bold text-slate-700 leading-relaxed outline-none focus:ring-1 focus:ring-blue-100 rounded p-1"
               />
               <div className="mt-4 grid grid-cols-2 gap-4">
@@ -164,7 +163,7 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
                     value={action.responsible}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
-                      const nextActions = state.d3.correctiveActions.map((a: any) => a.id === action.id ? { ...a, responsible: e.target.value } : a);
+                      const nextActions = state.d3.correctiveActions.map((a) => a.id === action.id ? { ...a, responsible: e.target.value } : a);
                       caseActions.updateSection('d3', (current) => ({ ...current, correctiveActions: nextActions }));
                     }}
                     className="w-full bg-white/50 border border-slate-200 rounded-lg p-2 text-[10px] font-bold outline-none focus:ring-2 focus:ring-blue-600/20"
@@ -177,7 +176,7 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
                     value={action.implementationDate}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => {
-                      const nextActions = state.d3.correctiveActions.map((a: any) => a.id === action.id ? { ...a, implementationDate: e.target.value } : a);
+                      const nextActions = state.d3.correctiveActions.map((a) => a.id === action.id ? { ...a, implementationDate: e.target.value } : a);
                       caseActions.updateSection('d3', (current) => ({ ...current, correctiveActions: nextActions }));
                     }}
                     className="w-full bg-white/50 border border-slate-200 rounded-lg p-2 text-[10px] font-bold outline-none focus:ring-2 focus:ring-blue-600/20"
@@ -224,7 +223,7 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
             {viewMode === 'edit' ? (
               <AutoExpandingTextarea
                 value={state.d3.implementationPlan}
-                onChange={(e: any) => caseActions.updateSection('d3', (current) => ({ ...current, implementationPlan: e.target.value }))}
+                onChange={(e) => caseActions.updateSection('d3', (current) => ({ ...current, implementationPlan: e.target.value }))}
                 className="bg-slate-50 border border-slate-200 rounded-3xl p-8 text-sm font-medium mono focus:ring-0 outline-none transition-all leading-relaxed"
               />
             ) : (
@@ -239,7 +238,7 @@ export const D3Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
       {/* Botón inferior para Avanzar a D4 */}
       <div className="mt-12 pt-8 border-t border-slate-100 flex justify-end">
         <button 
-          onClick={() => setActiveTab(Tab.D4)} 
+          onClick={() => setActiveTab?.(Tab.D4)} 
           className="px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-black transition-all flex items-center gap-3 active:scale-[0.95]"
         >
           {t('advanceToD4RootCause')}

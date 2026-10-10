@@ -1,6 +1,15 @@
+import type { TranslateFn } from '../../i18n';
 import { ClipboardDocumentCheckIcon, ShieldCheckIcon, MagnifyingGlassIcon, WrenchScrewdriverIcon, ArrowPathIcon, AdjustmentsHorizontalIcon, CloudArrowDownIcon, CheckBadgeIcon, LightBulbIcon, SparklesIcon, StarIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
-export const TutorialModal = ({ isOpen, onClose, t, step, setStep }: any) => {
+interface TutorialModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  t: TranslateFn;
+  step: number;
+  setStep: (step: number) => void;
+}
+
+export const TutorialModal = ({ isOpen, onClose, t, step, setStep }: TutorialModalProps) => {
   if (!isOpen) return null;
 
   const steps = [

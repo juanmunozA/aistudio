@@ -1,7 +1,8 @@
+import type { TranslateFn } from '../../i18n';
 import { type AppState } from '../../types';
 import { BuildingOffice2Icon } from '@heroicons/react/24/outline';
 
-export const ImprovementReportTemplate = ({ state, t }: { state: AppState, t: any }) => {
+export const ImprovementReportTemplate = ({ state, t }: { state: AppState; t: TranslateFn }) => {
   return (
     <div id="improvement-report-content" className="official-document p-10 space-y-8 bg-white text-slate-900 font-sans max-w-[1000px] mx-auto">
       <div className="flex justify-between items-start border-b-4 border-orange-500 pb-6 mb-10">

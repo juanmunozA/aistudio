@@ -20,7 +20,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 /** Permite que otras piezas (persistencia local) limpien sus datos al cerrar sesión. */
 export function onLogout(listener: () => void | Promise<void>) {
   LOGOUT_LISTENERS.add(listener);
-  return () => LOGOUT_LISTENERS.delete(listener);
+  return () => {
+    LOGOUT_LISTENERS.delete(listener);
+  };
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

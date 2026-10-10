@@ -1,7 +1,8 @@
+import type { TranslateFn } from '../../i18n';
 import { type AppState } from '../../types';
 import { BuildingOffice2Icon } from '@heroicons/react/24/outline';
 
-export const EfficacyReportTemplate = ({ state, t }: { state: AppState, t: any }) => {
+export const EfficacyReportTemplate = ({ state, t }: { state: AppState; t: TranslateFn }) => {
   return (
     <div id="efficacy-report-content" className="p-12 bg-white text-slate-900 font-sans max-w-[1000px] mx-auto">
       <div className="flex justify-between items-start mb-12 border-b-4 border-slate-900 pb-8">

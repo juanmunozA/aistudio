@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Tab, type AppState } from '../types';
+import { Tab } from '../types';
 import { ClipboardDocumentCheckIcon, ShieldCheckIcon, MagnifyingGlassIcon, WrenchScrewdriverIcon, ArrowPathIcon, BuildingOffice2Icon, AdjustmentsHorizontalIcon, QuestionMarkCircleIcon, CloudArrowDownIcon, CheckBadgeIcon, DocumentIcon, LightBulbIcon, SparklesIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, CheckBadgeIcon as CheckBadgeIconSolid, ArrowsPointingOutIcon, ArrowsPointingInIcon, BookOpenIcon } from '@heroicons/react/24/outline';
-import { runAiOperation, type AiOperation } from '../services/api/aiApi';
 import { casesApi } from '../services/api/casesApi';
 import { caseActions, useCaseState } from '../store/caseStore';
 import type { Banner } from '../features/sectionProps';
@@ -23,8 +22,7 @@ import { translatorFor } from '../i18n';
 import { SaveStatusBadge } from '../shared/components/SaveStatusBadge';
 import { TutorialModal } from '../shared/components/TutorialModal';
 import { WarningModal } from '../shared/components/WarningModal';
-import { INITIAL_STATE } from '../shared/constants/initialState';
-import { appStylesheets, handleDownloadPDF, printWindowAfter } from '../shared/utils/print';
+import { appStylesheets, printWindowAfter } from '../shared/utils/print';
 import { exportsApi } from '../services/api/exportsApi';
 
 export const App: React.FC = () => {
@@ -78,7 +76,7 @@ export const App: React.FC = () => {
           const migratedState = await casesApi.normalize(json);
           caseActions.replaceCase(migratedState);
           alert(t('successLoad'));
-        } catch (error) {
+        } catch {
           alert(t('errorLoad'));
         }
       };

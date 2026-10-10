@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { TrashIcon } from '@heroicons/react/24/outline';
+import type { TranslateFn } from '../../i18n';
 
-export const ResetButton = ({ onReset, t }: any) => {
+export const ResetButton = ({ onReset, t }: { onReset: () => void; t: TranslateFn }) => {
   const [confirm, setConfirm] = useState(false);
 
   if (confirm) {

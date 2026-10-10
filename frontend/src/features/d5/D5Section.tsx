@@ -16,11 +16,10 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   const setD5Step = (s: number) => caseActions.updateSection('d5_d6', (current) => ({ ...current, step: s }));
 
   const handleResetSection = () => {
-    caseActions.updateSection('d5_d6', (current) => INITIAL_STATE.d5_d6);
+    caseActions.resetSection('d5_d6');
   };
 
-  const generateACP = (evt?: any) => {
-    const isManualClick = evt !== undefined;
+  const generateACP = (isManualClick = false) => {
     const d4 = state.d4 || INITIAL_STATE.d4;
     const fixedIds = [...(d4.fixedRootCauseIds || [])];
 
@@ -83,7 +82,7 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
   };
 
   const generateImplementationGuide = (action: ActionStep) => {
-    runAi(`d5Impl-${action.id}`, 'd5Implementation', { action: action.action, responsible: action.responsible, timeframe: action.timeframe }, (data) => {
+    runAi(`d5Impl-${action.id}`, 'd5Implementation', { action: action.action, responsible: action.responsible, timeframe: action.timeframe }, (data: string) => {
       caseActions.updateSection('d5_d6', (current) => ({
           ...current,
           implementationSuggestions: {
@@ -98,6 +97,8 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
     if ((!state.d5_d6.acpPlans || state.d5_d6.acpPlans.length === 0) && state.d4.secondaryActions && Object.keys(state.d4.secondaryActions).length > 0) {
       generateACP();
     }
+    // Solo al abrir D5: arma los planes si hay acciones de D4 y todavía no existen planes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const exportACPToCSV = () => {
@@ -184,7 +185,7 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
                     
                     <AutoExpandingTextarea 
                       value={plan.title} 
-                      onChange={(e: any) => { 
+                      onChange={(e) => { 
                         const nextPlans = [...state.d5_d6.acpPlans]; 
                         nextPlans[pIdx].title = e.target.value; 
                         caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
@@ -204,7 +205,7 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
                       </div>
                       <AutoExpandingTextarea 
                         value={plan.rootCause} 
-                        onChange={(e: any) => { 
+                        onChange={(e) => { 
                           const nextPlans = [...state.d5_d6.acpPlans]; 
                           nextPlans[pIdx].rootCause = e.target.value; 
                           caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
@@ -247,7 +248,7 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
                           <td className="p-4 text-sm font-bold text-slate-700">
                             <AutoExpandingTextarea 
                               value={action.action} 
-                              onChange={(e: any) => { 
+                              onChange={(e) => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].action = e.target.value; 
                                 caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
@@ -258,7 +259,7 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
                           <td className="p-4 text-sm font-bold text-slate-700">
                             <AutoExpandingTextarea 
                               value={action.evidenceHow || ''} 
-                              onChange={(e: any) => { 
+                              onChange={(e) => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].evidenceHow = e.target.value; 
                                 caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
@@ -270,7 +271,7 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
                           <td className="p-4 text-sm font-bold text-slate-700">
                             <AutoExpandingTextarea 
                               value={action.verificationHow || ''} 
-                              onChange={(e: any) => { 
+                              onChange={(e) => { 
                                 const nextPlans = [...state.d5_d6.acpPlans]; 
                                 nextPlans[pIdx].actions[aIdx].verificationHow = e.target.value; 
                                 caseActions.updateSection('d5_d6', (current) => ({ ...current, acpPlans: nextPlans })); 
@@ -382,7 +383,7 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
                       {suggestion ? (
                         <AutoExpandingTextarea 
                           value={suggestion} 
-                          onChange={(e: any) => {
+                          onChange={(e) => {
                             caseActions.updateSection('d5_d6', (current) => ({
                                 ...current,
                                 implementationSuggestions: {
@@ -408,7 +409,7 @@ export const D5Section = ({ setActiveTab, t, setBanner }: SectionProps) => {
 
           <div className="flex justify-end mt-12">
             <button 
-              onClick={() => setActiveTab(Tab.D6)} 
+              onClick={() => setActiveTab?.(Tab.D6)} 
               className="px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-black transition-all flex items-center gap-3 active:scale-[0.95]"
             >
               {t('advanceToPokaYoke')} <ArrowRightIcon className="w-5 h-5" />

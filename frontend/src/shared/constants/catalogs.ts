@@ -1,10 +1,12 @@
+import type { Language } from '../../types';
+
 export const auditStandards = [
   "ISO9001", "ISO14001", "ISO45001", "ISO19011", "ISO50001", 
   "BASC", "SMETA", "FSSC22000", "SQF", "HACCP", "FSMA", "FSVP",
   "INVIMA", "SENASA", "FDA", "DSHS", "Otros"
 ];
 
-export const deviationImpacts = {
+export const deviationImpacts: Record<Language, string[]> = {
   es: [
     "SST", "Calidad", "Inocuidad", "Ambiental", "Seguridad física", 
     "Seguridad Comercial", "Quejas", "hallazgos internos", "Productividad", 
@@ -19,7 +21,7 @@ export const deviationImpacts = {
   ]
 };
 
-export const foodSafetyImpacts = {
+export const foodSafetyImpacts: Record<Language, string[]> = {
   es: [
     "Peligro físico", "Peligro químico", "Peligro biológico", "Otros"
   ],
@@ -28,7 +30,7 @@ export const foodSafetyImpacts = {
   ]
 };
 
-export const mCategoriesLocal = {
+export const mCategoriesLocal: Record<Language, string[]> = {
   es: ["Mano de Obra", "Maquinaria", "Materiales", "Métodos", "Medición", "Medio Ambiente"],
   en: ["Manpower", "Machinery", "Materials", "Methods", "Measurement", "Environment"]
 };

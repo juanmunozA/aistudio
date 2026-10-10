@@ -3,7 +3,6 @@ import { ShieldCheckIcon, ArrowPathIcon, QuestionMarkCircleIcon, SparklesIcon, B
 import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingTextarea';
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
-import { INITIAL_STATE } from '../../shared/constants/initialState';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
 import { useAiRunner } from '../ai/useAiRunner';
@@ -12,11 +11,11 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
   const state = useCaseState();
   const { runAi, loading } = useAiRunner();
   const handleResetSection = () => {
-    caseActions.updateSection('efficacy', (current) => INITIAL_STATE.efficacy);
+    caseActions.resetSection('efficacy');
   };
 
   const generateProtocols = () => {
-    const fixedActions = (state.d5_d6.acpPlans || []).flatMap((p: ACPPlan) => p.actions || []).filter((a: any) => a.isFixed);
+    const fixedActions = (state.d5_d6.acpPlans || []).flatMap((p: ACPPlan) => p.actions || []).filter((a) => a.isFixed);
     if (fixedActions.length === 0) return alert(t('fixActionsInD5First'));
 
     runAi<Partial<AppState['efficacy']>>(
@@ -38,7 +37,7 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
           ...current,
           verificationGuides: {
             ...(current.verificationGuides || {}),
-            [protocol.id]: typeof data === 'string' ? data : (data.text || JSON.stringify(data))
+            [protocol.id]: typeof data === 'string' ? data : ((data as { text?: string })?.text || JSON.stringify(data))
           }
         }));
     });
@@ -110,14 +109,14 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
                     <td className="p-2">
                       <AutoExpandingTextarea 
                         value={protocol.id} 
-                        onChange={(e: any) => updateProtocol(idx, 'id', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'id', e.target.value)}
                         className="bg-transparent text-[10px] font-bold text-slate-700 outline-none w-full border-none p-0 focus:ring-0 leading-tight whitespace-pre-line"
                       />
                     </td>
                     <td className="p-2">
                       <AutoExpandingTextarea 
                         value={protocol.action} 
-                        onChange={(e: any) => updateProtocol(idx, 'action', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'action', e.target.value)}
                         className="bg-transparent text-[10px] font-bold text-slate-600 outline-none w-full border-none p-0 focus:ring-0"
                       />
                     </td>
@@ -125,7 +124,7 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
                       <div className="relative flex items-center gap-2">
                         <AutoExpandingTextarea 
                           value={protocol.verificationMethod} 
-                          onChange={(e: any) => updateProtocol(idx, 'verificationMethod', e.target.value)}
+                          onChange={(e) => updateProtocol(idx, 'verificationMethod', e.target.value)}
                           className="bg-transparent text-[10px] font-medium text-slate-600 outline-none w-full border-none p-0 focus:ring-0"
                         />
                         <button 
@@ -145,21 +144,21 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
                     <td className="p-2">
                       <AutoExpandingTextarea 
                         value={protocol.kpi} 
-                        onChange={(e: any) => updateProtocol(idx, 'kpi', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'kpi', e.target.value)}
                         className="bg-transparent text-[10px] font-medium text-slate-600 outline-none w-full border-none p-0 focus:ring-0"
                       />
                     </td>
                     <td className="p-2">
                       <AutoExpandingTextarea 
                         value={protocol.auditFrequency} 
-                        onChange={(e: any) => updateProtocol(idx, 'auditFrequency', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'auditFrequency', e.target.value)}
                         className="bg-transparent text-[10px] font-medium text-slate-600 outline-none w-full border-none p-0 focus:ring-0"
                       />
                     </td>
                     <td className="p-2">
                       <AutoExpandingTextarea 
                         value={protocol.contingencyPlan} 
-                        onChange={(e: any) => updateProtocol(idx, 'contingencyPlan', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'contingencyPlan', e.target.value)}
                         className="bg-transparent text-[10px] font-medium text-slate-600 outline-none w-full border-none p-0 focus:ring-0"
                       />
                     </td>
@@ -167,7 +166,7 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
                       <input 
                         type="text"
                         value={protocol.executionResponsible} 
-                        onChange={(e: any) => updateProtocol(idx, 'executionResponsible', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'executionResponsible', e.target.value)}
                         className="bg-transparent text-[10px] font-medium text-slate-600 outline-none w-full border-none p-0 focus:ring-0"
                       />
                     </td>
@@ -175,7 +174,7 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
                       <input 
                         type="date"
                         value={protocol.executionDate} 
-                        onChange={(e: any) => updateProtocol(idx, 'executionDate', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'executionDate', e.target.value)}
                         className="bg-transparent text-[10px] font-medium text-slate-600 outline-none w-full border-none p-0 focus:ring-0"
                       />
                     </td>
@@ -276,7 +275,7 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
                       <input 
                         type="text"
                         value={protocol.verificationResponsible} 
-                        onChange={(e: any) => updateProtocol(idx, 'verificationResponsible', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'verificationResponsible', e.target.value)}
                         className="bg-transparent text-[10px] font-medium text-slate-600 outline-none w-full border-none p-0 focus:ring-0"
                       />
                     </td>
@@ -284,14 +283,14 @@ export const EfficacySection = ({ t, setBanner }: SectionProps) => {
                       <input 
                         type="date"
                         value={protocol.verificationDate} 
-                        onChange={(e: any) => updateProtocol(idx, 'verificationDate', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'verificationDate', e.target.value)}
                         className="bg-transparent text-[10px] font-medium text-slate-600 outline-none w-full border-none p-0 focus:ring-0"
                       />
                     </td>
                     <td className="p-2">
                       <select
                         value={protocol.isEffective || ''}
-                        onChange={(e: any) => updateProtocol(idx, 'isEffective', e.target.value)}
+                        onChange={(e) => updateProtocol(idx, 'isEffective', e.target.value)}
                         className="bg-transparent text-[10px] font-black text-emerald-600 outline-none w-full border-none p-0 focus:ring-0 cursor-pointer"
                       >
                         <option value="">-</option>

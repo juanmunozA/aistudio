@@ -1,38 +1,38 @@
-import { Tab, type AppState, type AnalysisSetup } from '../../types';
+import { Tab, type AnalysisSetup } from '../../types';
 import { ShieldCheckIcon, AdjustmentsHorizontalIcon, CalendarDaysIcon, IdentificationIcon, BookmarkSquareIcon, BriefcaseIcon, QuestionMarkCircleIcon, ChartPieIcon } from '@heroicons/react/24/outline';
 import { ResetButton } from '../../shared/components/ResetButton';
 import { auditStandards, deviationImpacts, foodSafetyImpacts } from '../../shared/constants/catalogs';
-import { INITIAL_STATE } from '../../shared/constants/initialState';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
 
 export const SetupSection = ({ setActiveTab, t, setBanner }: SectionProps) => {
   const state = useCaseState();
   const handleResetSection = () => {
-    caseActions.updateSection('setup', (current) => INITIAL_STATE.setup);
+    caseActions.resetSection('setup');
   };
 
-  const handleChange = (field: keyof AnalysisSetup, value: any) => { 
+  const handleChange = <K extends keyof AnalysisSetup>(field: K, value: AnalysisSetup[K]) => { 
     if (field === 'type') {
-      if (value === 'Quejas de Inocuidad') {
-        const validFoodSafety = ((foodSafetyImpacts as any)[state.language] || foodSafetyImpacts.es);
+      const type = value as AnalysisSetup['type'];
+      if (type === 'Quejas de Inocuidad') {
+        const validFoodSafety = (foodSafetyImpacts[state.language] ?? foodSafetyImpacts.es);
         const currentImpacts = state.setup.impact || [];
         const filtered = currentImpacts.filter((i: string) => validFoodSafety.includes(i));
         const newImpacts = filtered.length > 0 ? filtered : [validFoodSafety[0]];
         caseActions.updateSection('setup', (current) => ({
             ...current,
-            type: value,
+            type,
             impact: newImpacts
           }));
         return;
-      } else if (state.setup.type === 'Quejas de Inocuidad' && value !== 'Quejas de Inocuidad') {
-        const validDev = ((deviationImpacts as any)[state.language] || deviationImpacts.es);
+      } else if (state.setup.type === 'Quejas de Inocuidad' && type !== 'Quejas de Inocuidad') {
+        const validDev = (deviationImpacts[state.language] ?? deviationImpacts.es);
         const currentImpacts = state.setup.impact || [];
         const filtered = currentImpacts.filter((i: string) => validDev.includes(i));
         const newImpacts = filtered.length > 0 ? filtered : [validDev[1] || validDev[0]];
         caseActions.updateSection('setup', (current) => ({
             ...current,
-            type: value,
+            type,
             impact: newImpacts
           }));
         return;
@@ -99,7 +99,7 @@ export const SetupSection = ({ setActiveTab, t, setBanner }: SectionProps) => {
                 <QuestionMarkCircleIcon className="w-7 h-7 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
               </button>
             </label>
-            <select value={state.setup.type} onChange={(e) => handleChange('type', e.target.value as any)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium focus:ring-2 focus:ring-blue-600/20 outline-none transition-all">
+            <select value={state.setup.type} onChange={(e) => handleChange('type', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium focus:ring-2 focus:ring-blue-600/20 outline-none transition-all">
               <option value="Desviación de proceso">{t('processDeviation')}</option>
               <option value="Hallazgo de auditoría (No conformidades)">{t('auditFinding')}</option>
               <option value="Quejas de Inocuidad">{t('foodSafetyComplaints')}</option>
@@ -118,8 +118,8 @@ export const SetupSection = ({ setActiveTab, t, setBanner }: SectionProps) => {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {(
                   state.setup.type === 'Quejas de Inocuidad'
-                    ? ((foodSafetyImpacts as any)[state.language] || foodSafetyImpacts.es)
-                    : ((deviationImpacts as any)[state.language] || deviationImpacts.es)
+                    ? (foodSafetyImpacts[state.language] ?? foodSafetyImpacts.es)
+                    : (deviationImpacts[state.language] ?? deviationImpacts.es)
                 ).map((impact: string) => (
                   <button 
                     key={impact} 
@@ -178,7 +178,7 @@ export const SetupSection = ({ setActiveTab, t, setBanner }: SectionProps) => {
             </div>
           )}
         </div>
-        <button onClick={() => setActiveTab(Tab.D1_D2)} disabled={!state.setup.caseName || !state.setup.responsible} className="w-full mt-10 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg disabled:opacity-20 hover:bg-slate-800 transition-all active:scale-[0.95]">{t('initAnalysis')}</button>
+        <button onClick={() => setActiveTab?.(Tab.D1_D2)} disabled={!state.setup.caseName || !state.setup.responsible} className="w-full mt-10 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg disabled:opacity-20 hover:bg-slate-800 transition-all active:scale-[0.95]">{t('initAnalysis')}</button>
       </div>
     </div>
   );

@@ -1,7 +1,17 @@
+import type { TranslateFn } from '../../i18n';
+import type { Language } from '../../types';
 import { useState } from 'react';
 import { ExclamationTriangleIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 
-export const WarningModal = ({ onAccept, onDecline, t, lang, onToggleLanguage }: any) => {
+interface WarningModalProps {
+  onAccept: () => void;
+  onDecline: () => void;
+  t: TranslateFn;
+  lang: Language;
+  onToggleLanguage: () => void;
+}
+
+export const WarningModal = ({ onAccept, onDecline, t, onToggleLanguage }: WarningModalProps) => {
   const [showDeclineMessage, setShowDeclineMessage] = useState(false);
 
   const handleDecline = () => {

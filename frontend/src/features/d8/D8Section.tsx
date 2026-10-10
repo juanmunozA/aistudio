@@ -4,7 +4,6 @@ import { ArrowPathIcon, DocumentTextIcon, QuestionMarkCircleIcon, CheckBadgeIcon
 import { AutoExpandingTextarea } from '../../shared/components/AutoExpandingTextarea';
 import { ResetButton } from '../../shared/components/ResetButton';
 import { renderStyledMarkdown } from '../../shared/components/StyledMarkdown';
-import { INITIAL_STATE } from '../../shared/constants/initialState';
 import { caseActions, useCaseState } from '../../store/caseStore';
 import type { SectionProps } from '../sectionProps';
 import { useAiRunner } from '../ai/useAiRunner';
@@ -13,7 +12,7 @@ export const D8Section = ({ t, setBanner }: SectionProps) => {
   const state = useCaseState();
   const { runAi, loading } = useAiRunner();
   const handleResetSection = () => {
-    caseActions.updateSection('d8', (current) => INITIAL_STATE.d8);
+    caseActions.resetSection('d8');
   };
 
   const [activeSubTab, setActiveSubTab] = useState<'standard' | 'yokoten' | 'quiz'>('standard');
@@ -110,7 +109,7 @@ export const D8Section = ({ t, setBanner }: SectionProps) => {
               {poeViewMode === 'edit' ? (
                 <AutoExpandingTextarea 
                   value={state.d8.poe} 
-                  onChange={(e: any) => caseActions.updateSection('d8', (current) => ({ ...current, poe: e.target.value }))}
+                  onChange={(e) => caseActions.updateSection('d8', (current) => ({ ...current, poe: e.target.value }))}
                   className="bg-slate-50 border border-slate-200 rounded-3xl p-8 text-sm font-medium focus:ring-0 outline-none transition-all leading-relaxed"
                   placeholder="Escriba el procedimiento operativo estándar aquí..."
                 />
@@ -138,7 +137,7 @@ export const D8Section = ({ t, setBanner }: SectionProps) => {
               {yokoViewMode === 'edit' ? (
                 <AutoExpandingTextarea 
                   value={state.d8.yokoTen} 
-                  onChange={(e: any) => caseActions.updateSection('d8', (current) => ({ ...current, yokoTen: e.target.value }))}
+                  onChange={(e) => caseActions.updateSection('d8', (current) => ({ ...current, yokoTen: e.target.value }))}
                   className="bg-slate-50 border border-slate-200 rounded-3xl p-8 text-sm font-medium focus:ring-0 outline-none transition-all leading-relaxed"
                   placeholder="Escriba el informe de despliegue horizontal aquí..."
                 />
@@ -153,7 +152,7 @@ export const D8Section = ({ t, setBanner }: SectionProps) => {
                     <button onClick={() => setBanner({ title: t('certification'), content: t('d7QuizBanner') })} className="text-slate-300 hover:text-slate-500 transition-all transform hover:scale-125">
                       <QuestionMarkCircleIcon className="w-7 h-7 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
                     </button>
-                  </h3><button onClick={generateQuiz} disabled={loading === 'd7Quiz'} className="px-6 py-2 bg-emerald-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-md flex items-center gap-2">{loading === 'd7Quiz' ? '...' : t('createExam')}</button></div>{state.d8.quiz && state.d8.quiz.length > 0 ? (<div className="space-y-8 h-auto flex flex-col">{state.d8.quiz.map((q: any, i: number) => (<div key={i} className="p-8 bg-slate-50 border border-slate-100 rounded-3xl h-auto flex flex-col"><p className="text-[10px] font-black text-slate-400 uppercase mb-4">{t('question')} #{i+1}</p><h4 className="text-sm font-bold text-slate-900 mb-6">{q.question_text}</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{q.options.map((opt: string, optIdx: number) => (<label key={optIdx} className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 ${answers[i] === optIdx ? 'bg-emerald-600 border-emerald-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700'}`}><input type="radio" name={`q-${i}`} className="hidden" checked={answers[i] === optIdx} onChange={() => setAnswers({ ...answers, [i]: optIdx })} /><span className="text-xs font-bold leading-tight">{opt}</span></label>))}</div></div>))}<div className="pt-8 border-t border-slate-100 flex flex-col items-center gap-6"><button onClick={() => { let correctCount = 0; state.d8.quiz.forEach((q: any, i: number) => { if (answers[i] === q.correct_answer) correctCount++; }); setScore(correctCount); }} className="px-12 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-emerald-700 active:scale-[0.95]">{t('grade')}</button>{score !== null && <div className={`p-8 rounded-full border-4 flex flex-col items-center justify-center aspect-square w-48 shadow-2xl animate-scale-up ${score >= 4 ? 'bg-emerald-50 border-emerald-400 text-emerald-600' : 'bg-red-50 border-red-400 text-red-600'}`}><p className="text-5xl font-black mono">{score}/5</p></div>}</div></div>) : <div className="py-24 text-center opacity-30 italic">{t('waitingAnalysis')}</div>}</div>)}
+                  </h3><button onClick={generateQuiz} disabled={loading === 'd7Quiz'} className="px-6 py-2 bg-emerald-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-md flex items-center gap-2">{loading === 'd7Quiz' ? '...' : t('createExam')}</button></div>{state.d8.quiz && state.d8.quiz.length > 0 ? (<div className="space-y-8 h-auto flex flex-col">{state.d8.quiz.map((q, i: number) => (<div key={i} className="p-8 bg-slate-50 border border-slate-100 rounded-3xl h-auto flex flex-col"><p className="text-[10px] font-black text-slate-400 uppercase mb-4">{t('question')} #{i+1}</p><h4 className="text-sm font-bold text-slate-900 mb-6">{q.question_text}</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{q.options.map((opt: string, optIdx: number) => (<label key={optIdx} className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 ${answers[i] === optIdx ? 'bg-emerald-600 border-emerald-700 text-white shadow-md' : 'bg-white border-slate-200 text-slate-700'}`}><input type="radio" name={`q-${i}`} className="hidden" checked={answers[i] === optIdx} onChange={() => setAnswers({ ...answers, [i]: optIdx })} /><span className="text-xs font-bold leading-tight">{opt}</span></label>))}</div></div>))}<div className="pt-8 border-t border-slate-100 flex flex-col items-center gap-6"><button onClick={() => { let correctCount = 0; state.d8.quiz.forEach((q, i: number) => { if (answers[i] === q.correct_answer) correctCount++; }); setScore(correctCount); }} className="px-12 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-emerald-700 active:scale-[0.95]">{t('grade')}</button>{score !== null && <div className={`p-8 rounded-full border-4 flex flex-col items-center justify-center aspect-square w-48 shadow-2xl animate-scale-up ${score >= 4 ? 'bg-emerald-50 border-emerald-400 text-emerald-600' : 'bg-red-50 border-red-400 text-red-600'}`}><p className="text-5xl font-black mono">{score}/5</p></div>}</div></div>) : <div className="py-24 text-center opacity-30 italic">{t('waitingAnalysis')}</div>}</div>)}
       </div>
     </div>
   );
