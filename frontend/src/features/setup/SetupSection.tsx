@@ -85,7 +85,7 @@ export const SetupSection = ({ state, setState, setActiveTab, t, setBanner }: an
                 <QuestionMarkCircleIcon className="w-7 h-7 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
               </button>
             </label>
-            <input type="text" placeholder={state.language === 'es' ? "Ej: Fallo en sellado..." : "Ex: Sealing failure..."} value={state.setup.caseName} onChange={(e) => handleChange('caseName', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium focus:ring-2 focus:ring-blue-600/20 outline-none transition-all" />
+            <input type="text" placeholder={t('exSealingFailure')} value={state.setup.caseName} onChange={(e) => handleChange('caseName', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium focus:ring-2 focus:ring-blue-600/20 outline-none transition-all" />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between gap-2">
@@ -94,7 +94,7 @@ export const SetupSection = ({ state, setState, setActiveTab, t, setBanner }: an
                 <QuestionMarkCircleIcon className="w-7 h-7 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
               </button>
             </label>
-            <input type="text" placeholder={state.language === 'es' ? "Analista Líder..." : "Lead Analyst..."} value={state.setup.responsible} onChange={(e) => handleChange('responsible', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium focus:ring-2 focus:ring-blue-600/20 outline-none transition-all" />
+            <input type="text" placeholder={t('leadAnalyst')} value={state.setup.responsible} onChange={(e) => handleChange('responsible', e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium focus:ring-2 focus:ring-blue-600/20 outline-none transition-all" />
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between gap-2">
@@ -143,7 +143,7 @@ export const SetupSection = ({ state, setState, setActiveTab, t, setBanner }: an
                     type="text" 
                     value={state.setup.otherImpact || ""} 
                     onChange={(e) => handleChange('otherImpact', e.target.value)} 
-                    placeholder={state.language === 'es' ? "Escriba el nombre..." : "Write the name..."}
+                    placeholder={t('writeTheName')}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium focus:ring-2 focus:ring-blue-600/20 outline-none transition-all"
                   />
                 </div>
@@ -176,7 +176,7 @@ export const SetupSection = ({ state, setState, setActiveTab, t, setBanner }: an
                     type="text" 
                     value={state.setup.otherStandard || ""} 
                     onChange={(e) => handleChange('otherStandard', e.target.value)} 
-                    placeholder={state.language === 'es' ? "Escriba el nombre..." : "Write the name..."}
+                    placeholder={t('writeTheName')}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-medium focus:ring-2 focus:ring-orange-600/20 outline-none transition-all"
                   />
                 </div>

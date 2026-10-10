@@ -14,7 +14,7 @@ export const D1D2Section = ({ state, setState, runAi, loading, setActiveTab, t, 
   const handleImprovementOpportunityToD5 = () => {
     const phenomenonText = state.d2.phenomenon || state.d2.fieldDataInput || state.setup.caseName;
     if (!phenomenonText || phenomenonText.trim() === '') {
-      alert(state.language === 'es' ? 'Por favor ingrese la descripción del fenómeno en D1 primero.' : 'Please enter the phenomenon description in D1 first.');
+      alert(t('pleaseEnterThePhenomenonDescriptionIn'));
       return;
     }
 
@@ -38,10 +38,10 @@ export const D1D2Section = ({ state, setState, runAi, loading, setActiveTab, t, 
 
         if (!actionList || actionList.length === 0) {
           actionList = [
-            state.language === 'es' ? "Implementar estándar o procedimiento estandarizado para la oportunidad de mejora" : "Implement standard or procedure for the improvement opportunity",
-            state.language === 'es' ? "Capacitar y sensibilizar al personal involucrado en el nuevo método de trabajo" : "Train personnel on the new working method",
-            state.language === 'es' ? "Establecer controles operacionales y listas de chequeo en el punto de trabajo" : "Establish operational controls and checklists at the workstation",
-            state.language === 'es' ? "Auditar y verificar en Gemba la efectividad y sostenibilidad de la mejora" : "Audit and verify in Gemba the effectiveness and sustainability of the improvement"
+            t('implementStandardOrProcedureForThe'),
+            t('trainPersonnelOnTheNewWorking'),
+            t('establishOperationalControlsAndChecklistsAt'),
+            t('auditAndVerifyInGembaThe')
           ];
         }
 
@@ -51,11 +51,11 @@ export const D1D2Section = ({ state, setState, runAi, loading, setActiveTab, t, 
             id: `action-improvement-${idx}-${Date.now()}`,
             actionId: caseNumber ? `${caseNumber}-${idx + 1}` : `${idx + 1}`,
             action: act,
-            evidenceHow: state.language === 'es' ? "Documento o Registro de implementación del estándar" : "Standard implementation document or record",
+            evidenceHow: t('standardImplementationDocumentOrRecord'),
             evidenceDate: defaultDate,
-            evidenceResponsible: state.setup.responsible || (state.language === 'es' ? "Líder de Área" : "Area Leader"),
-            verificationHow: state.language === 'es' ? "Auditoría en Gemba y seguimiento a KPI" : "Gemba audit and KPI follow-up",
-            responsible: state.setup.responsible || (state.language === 'es' ? "Líder de Área" : "Area Leader"),
+            evidenceResponsible: state.setup.responsible || (t('areaLeader')),
+            verificationHow: t('gembaAuditAndKpiFollowUp'),
+            responsible: state.setup.responsible || (t('areaLeader')),
             timeframe: defaultDate,
             isFixed: true
           };
@@ -64,8 +64,8 @@ export const D1D2Section = ({ state, setState, runAi, loading, setActiveTab, t, 
         const newPlan: ACPPlan = {
           id: `acp-improvement-${Date.now()}`,
           rootCause: phenomenonText,
-          title: state.language === 'es' ? `Plan de Mejora: ${phenomenonText.substring(0, 40)}...` : `Improvement Plan: ${phenomenonText.substring(0, 40)}...`,
-          introduction: state.language === 'es' ? `Acciones de mejora para la oportunidad identificada en D1.` : `Improvement actions for opportunity identified in D1.`,
+          title: t('improvementPlanTitle', { text: phenomenonText.substring(0, 40) }),
+          introduction: t('improvementPlanIntro'),
           actions: formattedActions,
           type: 'primary'
         };
@@ -156,18 +156,18 @@ export const D1D2Section = ({ state, setState, runAi, loading, setActiveTab, t, 
 
   const [activeSubTab, setActiveSubTab] = useState<'definition' | 'financial'>('definition');
   const costFields = [
-    { label: state.language === 'es' ? "Mano de Obra" : "Labor", field: "manoDeObra", icon: UserGroupIcon },
-    { label: state.language === 'es' ? "Materia Prima" : "Raw Material", field: "materiaPrima", icon: InboxStackIcon },
-    { label: state.language === 'es' ? "Mat. Empaque" : "Pkg Material", field: "materialEmpaque", icon: ArchiveBoxIcon },
-    { label: state.language === 'es' ? "Recorte/Pérdida" : "Trim/Loss", field: "recorte", icon: ReceiptPercentIcon },
-    { label: state.language === 'es' ? "Desperdicio Físico" : "Physical Waste", field: "desperdicio", icon: TrashIcon },
-    { label: state.language === 'es' ? "Prod. Terminado" : "Finished Product", field: "productoTerminado", icon: BuildingOffice2Icon },
-    { label: state.language === 'es' ? "Maquinaria y Equipos" : "Machinery & Equipment", field: "maquinariaEquipos", icon: CogIcon },
-    { label: state.language === 'es' ? "Infraestructura (Obras)" : "Infrastructure (Works)", field: "infraestructura", icon: BuildingLibraryIcon },
-    { label: state.language === 'es' ? "Logísticos" : "Logistics", field: "logisticos", icon: TruckIcon },
-    { label: state.language === 'es' ? "Ensayos/Pruebas" : "Tests/Trials", field: "ensayosPruebas", icon: BeakerIcon },
-    { label: state.language === 'es' ? "Lucro Cesante y Parada" : "Downtime/Lost Profits", field: "lucroCesante", icon: ClockIcon },
-    { label: state.language === 'es' ? "Otros Rubros" : "Other Items", field: "otros", icon: BanknotesIcon },
+    { label: t('labor'), field: "manoDeObra", icon: UserGroupIcon },
+    { label: t('rawMaterial'), field: "materiaPrima", icon: InboxStackIcon },
+    { label: t('pkgMaterial'), field: "materialEmpaque", icon: ArchiveBoxIcon },
+    { label: t('trimLoss'), field: "recorte", icon: ReceiptPercentIcon },
+    { label: t('physicalWaste'), field: "desperdicio", icon: TrashIcon },
+    { label: t('finishedProduct'), field: "productoTerminado", icon: BuildingOffice2Icon },
+    { label: t('machineryEquipment'), field: "maquinariaEquipos", icon: CogIcon },
+    { label: t('infrastructureWorks'), field: "infraestructura", icon: BuildingLibraryIcon },
+    { label: t('logistics'), field: "logisticos", icon: TruckIcon },
+    { label: t('testsTrials'), field: "ensayosPruebas", icon: BeakerIcon },
+    { label: t('downtimeLostProfits'), field: "lucroCesante", icon: ClockIcon },
+    { label: t('otherItems'), field: "otros", icon: BanknotesIcon },
   ];
   const updateCostInput = (field: keyof CostInputs, val: string) => { setState((p: AppState) => ({ ...p, costs: { ...p.costs, inputs: { ...p.costs.inputs, [field]: formatCurrencyInput(val, p.costs.currency) } } })); };
   const updateBreakdownItem = (idx: number, field: keyof CostBreakdown, val: string) => { const nextBreakdown = [...(state.costs.breakdown || [])]; if (nextBreakdown[idx]) { nextBreakdown[idx] = { ...nextBreakdown[idx], [field]: val }; setState((p: AppState) => ({ ...p, costs: { ...p.costs, breakdown: nextBreakdown } })); } };

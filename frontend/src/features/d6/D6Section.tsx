@@ -75,7 +75,7 @@ export const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any
         <button 
           onClick={() => {
             const confirmedPokas = (state.d5_d6.pokaYokes || []).filter((p: PokaYokeSolution) => p.isConfirmed && p.details);
-            if (confirmedPokas.length === 0) return alert(state.language === 'es' ? 'No hay Poka-Yokes confirmados con guía técnica.' : 'No confirmed Poka-Yokes with technical guide.');
+            if (confirmedPokas.length === 0) return alert(t('noConfirmedPokaYokesWithTechnical'));
             
             const printWindow = window.open('', '_blank');
             if (!printWindow) return;
@@ -131,7 +131,7 @@ export const D6Section = ({ state, setState, runAi, loading, t, setBanner }: any
           }}
           className="px-8 py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-red-700 transition-all flex items-center gap-2 active:scale-[0.95]"
         >
-          <PrinterIcon className="w-4 h-4" /> {state.language === 'es' ? 'Descargar Guía Completa PDF' : 'Download Full Guide PDF'}
+          <PrinterIcon className="w-4 h-4" /> {t('downloadFullGuidePdf')}
         </button>
         <button onClick={generatePokaYokes} disabled={loading === 'd5Poka'} className="px-8 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-orange-700 transition-all flex items-center gap-2 active:scale-[0.95]">{loading === 'd5Poka' ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <BoltIcon className="w-4 h-4" />} {t('proposeSolutions')}</button>
       </div>

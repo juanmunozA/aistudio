@@ -44,12 +44,12 @@ export const FullReportTemplate = ({ state, t }: { state: AppState, t: any }) =>
         <div className="text-right">
           <p className="text-sm font-black uppercase text-slate-400 tracking-widest">{t('responsible')}: {state.setup.responsible}</p>
           <p className="text-sm font-black uppercase text-slate-400 tracking-widest">{t('startDate')}: {(() => { if (!state.setup.startDate) return ""; const [y, m, d] = state.setup.startDate.split('-'); return `${d}-${m}-${y}`; })()}</p>
-          <p className="text-sm font-black uppercase text-slate-400 tracking-widest">{state.language === 'es' ? 'FECHA FINAL' : 'END DATE'}: {(() => { const now = new Date(); return `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`; })()}</p>
+          <p className="text-sm font-black uppercase text-slate-400 tracking-widest">{t('endDate')}: {(() => { const now = new Date(); return `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`; })()}</p>
         </div>
       </div>
       
       <div className="industrial-card">
-        <h2 className="text-xl font-black uppercase border-b-2 border-slate-200 pb-3 mb-4">D0: {state.language === 'es' ? 'CONFIGURACIÓN' : 'CONFIGURATION'}</h2>
+        <h2 className="text-xl font-black uppercase border-b-2 border-slate-200 pb-3 mb-4">D0: {t('configuration')}</h2>
         <div className="grid grid-cols-2 gap-6">
           <div>
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{t('caseType')}</label>
@@ -96,7 +96,7 @@ export const FullReportTemplate = ({ state, t }: { state: AppState, t: any }) =>
         <div className="space-y-6">
           {state.d3.isNotApplicable ? (
             <div className="p-6 text-center text-sm font-bold text-slate-500 uppercase tracking-wide bg-slate-50 border border-slate-200 rounded-2xl">
-              {state.language === 'es' ? 'No aplica para este caso' : 'Not applicable for this case'}
+              {t('notApplicableForThisCase')}
             </div>
           ) : state.d3.selectedCorrectiveActionIds.length > 0 ? (
             state.d3.correctiveActions.filter(a => state.d3.selectedCorrectiveActionIds.includes(a.id)).map((action) => (
@@ -203,11 +203,11 @@ export const FullReportTemplate = ({ state, t }: { state: AppState, t: any }) =>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-50">
                       <div>
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{state.language === 'es' ? '¿Cuál será la evidencia de la implementación?' : 'Implementation Evidence'}</label>
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{t('implementationEvidence')}</label>
                         <p className="text-[10px] font-bold text-slate-600">{a.evidenceHow}</p>
                       </div>
                       <div>
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{state.language === 'es' ? '¿Cómo se verificará la implementación?' : 'Implementation Verification'}</label>
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">{t('implementationVerification')}</label>
                         <p className="text-[10px] font-bold text-slate-600">{a.verificationHow}</p>
                       </div>
                     </div>

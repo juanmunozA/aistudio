@@ -23,7 +23,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
 
     if (fixedIds.length === 0) {
       if (isManualClick) {
-        alert(state.language === 'es' ? 'Debe fijar al menos una causa raíz en el paso D4.' : 'You must fix at least one root cause in step D4.');
+        alert(t('youMustFixAtLeastOne'));
       }
       return;
     }
@@ -54,9 +54,9 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                 action: act, 
                 evidenceHow: "",
                 evidenceDate: defaultDate,
-                evidenceResponsible: state.language === 'es' ? "Líder de Área" : "Area Leader",
+                evidenceResponsible: t('areaLeader'),
                 verificationHow: "",
-                responsible: state.language === 'es' ? "Líder de Área" : "Area Leader", 
+                responsible: t('areaLeader'), 
                 timeframe: defaultDate, 
                 isFixed: false 
               })); 
@@ -84,15 +84,15 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
             newPlans.push({
               id: `acp-${id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               rootCause: rootText,
-              title: state.language === 'es' ? `Plan ACP: ${rootText.substring(0, 40)}...` : `PCA Plan: ${rootText.substring(0, 40)}...`,
-              introduction: state.language === 'es' ? `Acciones para mitigación de falla.` : `Actions for failure mitigation.`,
+              title: t('acpPlanTitle', { text: rootText.substring(0, 40) }),
+              introduction: t('acpPlanIntro'),
               actions: actions.map((a, idx) => ({ 
                 ...a, 
                 id: a.id || `action-${id}-${idx}-${Date.now()}`,
                 actionId: isAudit && caseNumber ? `${caseNumber}-${globalActionCounter++}` : undefined,
                 evidenceHow: a.evidenceHow || "",
                 evidenceDate: a.evidenceDate || (() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; })(),
-                evidenceResponsible: a.evidenceResponsible || (state.language === 'es' ? "Líder de Área" : "Area Leader"),
+                evidenceResponsible: a.evidenceResponsible || (t('areaLeader')),
                 verificationHow: a.verificationHow || "",
                 isFixed: a.isFixed || false 
               })),
@@ -133,15 +133,15 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
         newPlans.push({
           id: `acp-${id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           rootCause: rootText,
-          title: state.language === 'es' ? `Plan ACP: ${rootText.substring(0, 40)}...` : `PCA Plan: ${rootText.substring(0, 40)}...`,
-          introduction: state.language === 'es' ? `Acciones para mitigación de falla.` : `Actions for failure mitigation.`,
+          title: t('acpPlanTitle', { text: rootText.substring(0, 40) }),
+          introduction: t('acpPlanIntro'),
           actions: actions.map((a, idx) => ({ 
             ...a, 
             id: a.id || `action-${id}-${idx}-${Date.now()}`,
             actionId: isAudit && caseNumber ? `${caseNumber}-${globalActionCounter++}` : undefined,
             evidenceHow: a.evidenceHow || "",
             evidenceDate: a.evidenceDate || (() => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; })(),
-            evidenceResponsible: a.evidenceResponsible || (state.language === 'es' ? "Líder de Área" : "Area Leader"),
+            evidenceResponsible: a.evidenceResponsible || (t('areaLeader')),
             verificationHow: a.verificationHow || "",
             isFixed: a.isFixed || false 
           })),
@@ -159,7 +159,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
       if (newPlans.length > 0) {
         alert(t('actionsMaterialized'));
       } else {
-        alert(state.language === 'es' ? 'No se encontraron acciones en D4. Por favor genere las acciones en el paso D4 o verifique que existan causas fijadas.' : 'No actions found in D4. Please generate actions in step D4 or verify that fixed causes exist.');
+        alert(t('noActionsFoundInD4Please'));
       }
     }
   };
@@ -168,13 +168,13 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
     if (state.setup.type !== 'Oportunidad de mejora') return;
     const phenomenonText = state.d2.phenomenon || state.d2.fieldDataInput || state.setup.caseName;
     if (!phenomenonText || phenomenonText.trim() === '') {
-      alert(state.language === 'es' ? 'No se encontró la descripción del fenómeno u oportunidad de mejora.' : 'No phenomenon or improvement opportunity description found.');
+      alert(t('noPhenomenonOrImprovementOpportunityDescription'));
       return;
     }
 
     const currentPlans = state.d5_d6.acpPlans || [];
     if (currentPlans.length === 0) {
-      alert(state.language === 'es' ? 'No hay un plan de acciones generado actualmente.' : 'There is currently no generated action plan.');
+      alert(t('thereIsCurrentlyNoGeneratedAction'));
       return;
     }
 
@@ -207,10 +207,10 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
 
         if (!actionList || actionList.length === 0) {
           actionList = [
-            state.language === 'es' ? "Implementar auditorías aleatorias en Gemba para asegurar adherencia al estándar" : "Implement random Gemba audits to ensure standard adherence",
-            state.language === 'es' ? "Diseñar e instalar ayudas visuales Poka-Yoke en la estación de trabajo" : "Design and install visual Poka-Yoke aids at the workstation",
-            state.language === 'es' ? "Revisar y actualizar la matriz de competencias y matriz de riesgos del área" : "Review and update area competency and risk matrix",
-            state.language === 'es' ? "Establecer indicador de gestión semanal para medir el desempeño del proceso" : "Establish weekly management indicator to measure process performance"
+            t('implementRandomGembaAuditsToEnsure'),
+            t('designAndInstallVisualPokaYoke'),
+            t('reviewAndUpdateAreaCompetencyAnd'),
+            t('establishWeeklyManagementIndicatorToMeasure')
           ];
         }
 
@@ -221,11 +221,11 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
             id: `action-improvement-refresh-${idx}-${Date.now()}`,
             actionId: caseNumber ? `${caseNumber}-${actionIdx}` : `${actionIdx}`,
             action: act,
-            evidenceHow: state.language === 'es' ? "Documento o Registro de implementación del estándar" : "Standard implementation document or record",
+            evidenceHow: t('standardImplementationDocumentOrRecord'),
             evidenceDate: defaultDate,
-            evidenceResponsible: state.setup.responsible || (state.language === 'es' ? "Líder de Área" : "Area Leader"),
-            verificationHow: state.language === 'es' ? "Auditoría en Gemba y seguimiento a KPI" : "Gemba audit and KPI follow-up",
-            responsible: state.setup.responsible || (state.language === 'es' ? "Líder de Área" : "Area Leader"),
+            evidenceResponsible: state.setup.responsible || (t('areaLeader')),
+            verificationHow: t('gembaAuditAndKpiFollowUp'),
+            responsible: state.setup.responsible || (t('areaLeader')),
             timeframe: defaultDate,
             isFixed: false
           };
@@ -348,7 +348,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
             onClick={() => setD5Step(s)} 
             className={`px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest border-2 transition-all active:scale-[0.98] ${state.d5_d6.step === s ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}
           >
-            {s === 1 ? (state.language === 'es' ? '1. Generar Plan' : '1. Generate Plan') : (state.language === 'es' ? '2. Implementación Plan' : '2. Implementation Plan')}
+            {s === 1 ? (t('t1GeneratePlan')) : (t('t2ImplementationPlan'))}
           </button>
         ))}
       </div>
@@ -365,14 +365,14 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                 <ArrowPathIcon className="w-4 h-4" /> 
                 {loading === 'd5RefreshImprovement' 
                   ? '...' 
-                  : (state.language === 'es' ? 'Refrescar / Generar Acciones No Fijadas' : 'Refresh / Generate Unfixed Actions')}
+                  : (t('refreshGenerateUnfixedActions'))}
               </button>
             )}
             <button 
               onClick={() => generateACP(true)} 
               className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-blue-700 transition-all flex items-center gap-2"
             >
-              <ArrowPathIcon className="w-4 h-4" /> {state.language === 'es' ? 'Actualizar Acciones' : 'Update Actions'}
+              <ArrowPathIcon className="w-4 h-4" /> {t('updateActions')}
             </button>
             <button onClick={exportACPToCSV} className="px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:bg-emerald-700 transition-all flex items-center gap-2">
               <CloudArrowDownIcon className="w-4 h-4" /> {t('downloadACP')}
@@ -405,9 +405,9 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-1 h-3 bg-blue-600 rounded-full"></div>
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                          {state.language === 'es' ? 'Causa Raíz Asociada' : 'Associated Root Cause'}
+                          {t('associatedRootCause')}
                         </label>
-                        <button onClick={() => setBanner({ title: state.language === 'es' ? 'Causa Raíz Asociada' : 'Associated Root Cause', content: t('d5RootCauseBanner') })} className="text-slate-300 hover:text-slate-500 transition-all transform hover:scale-125 drop-shadow-[0_0_35px_rgba(245,158,11,0.8)]">
+                        <button onClick={() => setBanner({ title: t('associatedRootCause'), content: t('d5RootCauseBanner') })} className="text-slate-300 hover:text-slate-500 transition-all transform hover:scale-125 drop-shadow-[0_0_35px_rgba(245,158,11,0.8)]">
                           <QuestionMarkCircleIcon className="w-7 h-7 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
                         </button>
                       </div>
@@ -428,12 +428,12 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                   <table className="w-full text-left border-collapse min-w-[1200px]">
                     <thead className="bg-slate-100 border-b border-slate-200">
                       <tr>
-                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">{state.language === 'es' ? 'ID Acción' : 'Action ID'}</th>
+                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('actionId2')}</th>
                         <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest w-1/4">{t('action')}</th>
-                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest w-1/4">{state.language === 'es' ? '¿Cuál será la evidencia de la implementación?' : 'What will be the implementation evidence?'}</th>
-                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest w-1/4">{state.language === 'es' ? '¿Cómo se verificará la implementación?' : 'How will the implementation be verified?'}</th>
-                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">{state.language === 'es' ? 'Fecha impl.' : 'Impl. date'}</th>
-                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest w-[220px] min-w-[220px]">{state.language === 'es' ? 'Resp. impl.' : 'Impl. resp.'}</th>
+                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest w-1/4">{t('whatWillBeTheImplementationEvidence')}</th>
+                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest w-1/4">{t('howWillTheImplementationBeVerified')}</th>
+                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('implDate')}</th>
+                        <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest w-[220px] min-w-[220px]">{t('implResp')}</th>
                         <th className="p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">{t('fix')}</th>
                       </tr>
                     </thead>
@@ -539,7 +539,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                 onClick={() => setD5Step(2)} 
                 className="px-12 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-blue-700 transition-all flex items-center gap-3 active:scale-[0.95]"
               >
-                {state.language === 'es' ? 'Ir a Implementación Plan' : 'Go to Implementation Plan'} <ArrowRightIcon className="w-5 h-5" />
+                {t('goToImplementationPlan')} <ArrowRightIcon className="w-5 h-5" />
               </button>
             </div>
           )}
@@ -552,10 +552,10 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
             <div className="industrial-card rounded-[2.5rem] p-20 text-center bg-white border border-slate-200 opacity-50">
               <ExclamationCircleIcon className="w-16 h-16 mx-auto mb-4 text-slate-300" />
               <p className="text-xs font-black uppercase tracking-widest text-slate-400">
-                {state.language === 'es' ? 'Fija al menos una acción en el paso 1 para generar su guía de implementación.' : 'Fix at least one action in step 1 to generate its implementation guide.'}
+                {t('fixAtLeastOneActionIn')}
               </p>
               <button onClick={() => setD5Step(1)} className="mt-6 px-6 py-2 bg-slate-900 text-white text-[10px] font-black rounded-xl uppercase tracking-widest">
-                {state.language === 'es' ? 'Volver al Paso 1' : 'Back to Step 1'}
+                {t('backToStep1')}
               </button>
             </div>
           ) : (
@@ -583,7 +583,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                         disabled={isGenerating}
                         className="px-6 py-2 bg-blue-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest shadow-md hover:bg-blue-700 transition-all disabled:opacity-50"
                       >
-                        {isGenerating ? '...' : (suggestion ? (state.language === 'es' ? 'Regenerar Guía' : 'Regenerate Guide') : (state.language === 'es' ? 'Generar Guía' : 'Generate Guide'))}
+                        {isGenerating ? '...' : (suggestion ? (t('regenerateGuide')) : (t('generateGuide')))}
                       </button>
                     </div>
                     
@@ -623,7 +623,7 @@ export const D5Section = ({ state, setState, runAi, loading, setActiveTab, t, se
               onClick={() => setActiveTab(Tab.D6)} 
               className="px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-black transition-all flex items-center gap-3 active:scale-[0.95]"
             >
-              {state.language === 'es' ? 'Avanzar a POKA-YOKE' : 'Advance to POKA-YOKE'} <ArrowRightIcon className="w-5 h-5" />
+              {t('advanceToPokaYoke')} <ArrowRightIcon className="w-5 h-5" />
             </button>
           </div>
         </div>

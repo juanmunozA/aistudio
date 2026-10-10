@@ -7,21 +7,21 @@ export const ImprovementReportTemplate = ({ state, t }: { state: AppState, t: an
       <div className="flex justify-between items-start border-b-4 border-orange-500 pb-6 mb-10">
         <div>
           <h1 className="text-4xl font-black uppercase tracking-tighter mb-2 text-orange-600">
-            {state.language === 'es' ? 'REPORTE OPORTUNIDAD DE MEJORA' : 'IMPROVEMENT OPPORTUNITY REPORT'}
+            {t('improvementOpportunityReport')}
           </h1>
-          <p className="text-lg font-bold text-slate-500 uppercase tracking-widest">{state.setup.caseName || (state.language === 'es' ? 'Oportunidad de Mejora' : 'Improvement Opportunity')}</p>
+          <p className="text-lg font-bold text-slate-500 uppercase tracking-widest">{state.setup.caseName || (t('improvementOpportunity2'))}</p>
         </div>
         <div className="text-right">
           <p className="text-sm font-black uppercase text-slate-400 tracking-widest">{t('responsible')}: {state.setup.responsible}</p>
           <p className="text-sm font-black uppercase text-slate-400 tracking-widest">{t('startDate')}: {(() => { if (!state.setup.startDate) return ""; const [y, m, d] = state.setup.startDate.split('-'); return `${d}-${m}-${y}`; })()}</p>
-          <p className="text-sm font-black uppercase text-slate-400 tracking-widest">{state.language === 'es' ? 'FECHA EMISIÓN' : 'ISSUE DATE'}: {(() => { const now = new Date(); return `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`; })()}</p>
+          <p className="text-sm font-black uppercase text-slate-400 tracking-widest">{t('issueDate')}: {(() => { const now = new Date(); return `${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`; })()}</p>
         </div>
       </div>
       
       {/* FASE D0: CONFIGURACIÓN */}
       <div className="industrial-card">
         <h2 className="text-xl font-black uppercase border-b-2 border-orange-200 text-orange-700 pb-3 mb-4">
-          D0: {state.language === 'es' ? 'CONFIGURACIÓN DE LA OPORTUNIDAD DE MEJORA' : 'IMPROVEMENT CONFIGURATION'}
+          D0: {t('improvementConfiguration')}
         </h2>
         <div className="grid grid-cols-2 gap-6">
           <div>
@@ -47,12 +47,12 @@ export const ImprovementReportTemplate = ({ state, t }: { state: AppState, t: an
       {/* FASE D1: OPORTUNIDAD DE MEJORA / FENOMENOLOGÍA */}
       <div className="industrial-card">
         <h2 className="text-xl font-black uppercase border-b-2 border-orange-200 text-orange-700 pb-3 mb-4">
-          D1: {state.language === 'es' ? 'DESCRIPCIÓN DE LA OPORTUNIDAD DE MEJORA' : 'IMPROVEMENT OPPORTUNITY DESCRIPTION'}
+          D1: {t('improvementOpportunityDescription')}
         </h2>
         <div className="space-y-6">
           <div className="bg-orange-50/50 p-5 rounded-2xl border border-orange-100">
             <label className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2 block">
-              {state.language === 'es' ? 'OPORTUNIDAD DE MEJORA / FENÓMENO' : 'IMPROVEMENT OPPORTUNITY / PHENOMENON'}
+              {t('improvementOpportunityPhenomenon')}
             </label>
             <p className="text-sm font-bold text-slate-800 italic leading-relaxed">
               "{state.d2.phenomenon || state.d2.fieldDataInput || state.setup.caseName}"
@@ -61,7 +61,7 @@ export const ImprovementReportTemplate = ({ state, t }: { state: AppState, t: an
           {state.d2.fiveW2H && (
             <div>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">
-                {state.language === 'es' ? 'ANÁLISIS ESTRUCTURADO 5W2H' : 'STRUCTURED 5W2H ANALYSIS'}
+                {t('structured5w2hAnalysis')}
               </label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {Object.entries(state.d2.fiveW2H).map(([k, v]) => (
@@ -79,19 +79,19 @@ export const ImprovementReportTemplate = ({ state, t }: { state: AppState, t: an
       {/* FASE D5: GESTIÓN ACP - PLAN DE ACCIONES DE MEJORA */}
       <div className="industrial-card page-break">
         <h2 className="text-xl font-black uppercase border-b-2 border-orange-200 text-orange-700 pb-3 mb-6">
-          D5: {state.language === 'es' ? 'GESTIÓN ACP - PLAN DE ACCIONES DE MEJORA' : 'ACP MANAGEMENT - IMPROVEMENT ACTION PLAN'}
+          D5: {t('acpManagementImprovementActionPlan')}
         </h2>
         <div className="space-y-8">
           {state.d5_d6.acpPlans.length === 0 ? (
             <p className="text-sm italic text-slate-400">
-              {state.language === 'es' ? 'No se han generado acciones de mejora aún.' : 'No improvement actions generated yet.'}
+              {t('noImprovementActionsGeneratedYet')}
             </p>
           ) : (
             state.d5_d6.acpPlans.map((plan, pIdx) => (
               <div key={pIdx} className="p-6 bg-slate-50 rounded-3xl border border-slate-200">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="px-3 py-1 rounded-full text-[8px] font-black uppercase bg-orange-500 text-white">
-                    {state.language === 'es' ? 'Plan de Mejora' : 'Improvement Plan'}
+                    {t('improvementPlan')}
                   </span>
                   <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">{plan.rootCause}</h3>
                 </div>
@@ -102,7 +102,7 @@ export const ImprovementReportTemplate = ({ state, t }: { state: AppState, t: an
                     if (fixedActions.length === 0) {
                       return (
                         <p className="text-xs italic text-slate-400 p-4">
-                          {state.language === 'es' ? 'No hay acciones fijadas en este plan.' : 'No fixed actions in this plan.'}
+                          {t('noFixedActionsInThisPlan')}
                         </p>
                       );
                     }
@@ -117,7 +117,7 @@ export const ImprovementReportTemplate = ({ state, t }: { state: AppState, t: an
                           </div>
                           <div className="text-right">
                             <span className="text-[8px] font-black px-2 py-1 rounded uppercase bg-emerald-100 text-emerald-800">
-                              {state.language === 'es' ? 'Fijada' : 'Fixed'}
+                              {t('fixed2')}
                             </span>
                           </div>
                         </div>
@@ -125,13 +125,13 @@ export const ImprovementReportTemplate = ({ state, t }: { state: AppState, t: an
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-50">
                           <div>
                             <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">
-                              {state.language === 'es' ? '¿Cuál será la evidencia de la implementación?' : 'Implementation Evidence'}
+                              {t('implementationEvidence')}
                             </label>
                             <p className="text-[10px] font-bold text-slate-600">{a.evidenceHow || '-'}</p>
                           </div>
                           <div>
                             <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">
-                              {state.language === 'es' ? '¿Cómo se verificará la implementación?' : 'Implementation Verification'}
+                              {t('implementationVerification')}
                             </label>
                             <p className="text-[10px] font-bold text-slate-600">{a.verificationHow || '-'}</p>
                           </div>
@@ -157,7 +157,7 @@ export const ImprovementReportTemplate = ({ state, t }: { state: AppState, t: an
         </div>
       </div>
 
-      <div className="mt-16 pt-6 border-t border-slate-100 flex justify-between items-center opacity-30 grayscale"><div className="flex items-center gap-2"><BuildingOffice2Icon className="w-5 h-5"/><span className="text-[10px] font-black uppercase tracking-widest">{t('suiteName')}</span></div><p className="text-[9px] font-bold uppercase">{state.language === 'es' ? 'Reporte Oportunidad de Mejora (D0, D1, D5)' : 'Improvement Opportunity Report (D0, D1, D5)'}</p></div>
+      <div className="mt-16 pt-6 border-t border-slate-100 flex justify-between items-center opacity-30 grayscale"><div className="flex items-center gap-2"><BuildingOffice2Icon className="w-5 h-5"/><span className="text-[10px] font-black uppercase tracking-widest">{t('suiteName')}</span></div><p className="text-[9px] font-bold uppercase">{t('improvementOpportunityReportD0D1D5')}</p></div>
     </div>
   );
 };

@@ -15,7 +15,7 @@ export const EfficacySection = ({ state, setState, runAi, loading, t, setBanner 
 
   const generateProtocols = () => {
     const fixedActions = (state.d5_d6.acpPlans || []).flatMap((p: ACPPlan) => p.actions || []).filter((a: any) => a.isFixed);
-    if (fixedActions.length === 0) return alert(state.language === 'es' ? "Fije acciones en D5 primero." : "Fix actions in D5 first.");
+    if (fixedActions.length === 0) return alert(t('fixActionsInD5First'));
 
     const actionsText = fixedActions.map((a: any) => `- [ID: ${a.actionId || 'N/A'}] ${a.action} (Responsable: ${a.responsible})`).join('\n');
     const rootCausesText = (state.d4.fiveWhysHistory || []).map((h: any) => h.systemicRootCause).filter(Boolean).join('; ');
@@ -44,11 +44,9 @@ export const EfficacySection = ({ state, setState, runAi, loading, t, setBanner 
 
       let rawKpi = (p.kpi || '').trim();
       if (!rawKpi) {
-        rawKpi = state.language === 'es' 
-          ? '100% de cumplimiento en verificación de campo (0 reincidencias)' 
-          : '100% compliance in field verification (0 recurrences)';
+        rawKpi = t('t100ComplianceInFieldVerification0');
       } else if (!/\d/.test(rawKpi)) {
-        rawKpi = `${rawKpi} (Meta: ${state.language === 'es' ? '100% de cumplimiento / 0 reincidencias' : '100% compliance / 0 recurrences'})`;
+        rawKpi = `${rawKpi} (Meta: ${t('t100Compliance0Recurrences')})`;
       }
 
       const unifiedProtocol: EfficacyProtocol = {
@@ -251,7 +249,7 @@ export const EfficacySection = ({ state, setState, runAi, loading, t, setBanner 
                 <BookOpenIcon className="w-5 h-5 text-emerald-600" />
               </div>
               <h3 className="text-sm font-black uppercase text-slate-800 tracking-widest">
-                {state.language === 'es' ? 'Guías Técnicas de Verificación de Campo' : 'Field Verification Technical Guides'}
+                {t('fieldVerificationTechnicalGuides')}
               </h3>
             </div>
             
@@ -289,7 +287,7 @@ export const EfficacySection = ({ state, setState, runAi, loading, t, setBanner 
                           </div>
                         ) : (
                           <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest italic">
-                            {state.language === 'es' ? 'Haga clic en el botón de la tabla o arriba para generar la guía' : 'Click the button in the table or above to generate the guide'}
+                            {t('clickTheButtonInTheTable')}
                           </p>
                         )}
                       </div>

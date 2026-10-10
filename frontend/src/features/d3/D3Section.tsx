@@ -102,7 +102,7 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
               </button>
             </h3>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-              {state.language === 'es' ? 'Acciones inmediatas para contener el problema' : 'Immediate actions to contain the problem'}
+              {t('immediateActionsToContainTheProblem')}
             </p>
           </div>
 
@@ -127,7 +127,7 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                 className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
               />
               <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest">
-                {state.language === 'es' ? 'No Aplica' : 'Not Applicable'}
+                {t('notApplicable')}
               </span>
             </label>
 
@@ -147,10 +147,10 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
           <div className="text-center py-12 bg-slate-50/50 rounded-3xl border border-slate-200 border-dashed">
             <ShieldCheckIcon className="w-8 h-8 text-slate-400 mx-auto mb-3" />
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {state.language === 'es' ? 'El paso D3: Corrección ha sido marcado como No Aplica.' : 'Step D3: Correction has been marked as Not Applicable.'}
+              {t('stepD3CorrectionHasBeenMarked')}
             </p>
             <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">
-              {state.language === 'es' ? 'No se registrará información técnica de contención para este caso.' : 'No technical containment info will be recorded for this case.'}
+              {t('noTechnicalContainmentInfoWillBe')}
             </p>
           </div>
         ) : (
@@ -275,7 +275,7 @@ export const D3Section = ({ state, setState, runAi, loading, setActiveTab, t, se
           onClick={() => setActiveTab(Tab.D4)} 
           className="px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-black transition-all flex items-center gap-3 active:scale-[0.95]"
         >
-          {state.language === 'es' ? 'Avanzar a D4: Causa Raíz' : 'Advance to D4: Root Cause'}
+          {t('advanceToD4RootCause')}
           <ArrowRightIcon className="w-5 h-5" />
         </button>
       </div>

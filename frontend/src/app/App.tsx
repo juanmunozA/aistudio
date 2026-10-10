@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Tab, type AppState } from '../types';
 import { ClipboardDocumentCheckIcon, ShieldCheckIcon, MagnifyingGlassIcon, WrenchScrewdriverIcon, ArrowPathIcon, BuildingOffice2Icon, AdjustmentsHorizontalIcon, QuestionMarkCircleIcon, CloudArrowDownIcon, CheckBadgeIcon, DocumentIcon, LightBulbIcon, SparklesIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, CheckBadgeIcon as CheckBadgeIconSolid, ArrowsPointingOutIcon, ArrowsPointingInIcon, BookOpenIcon } from '@heroicons/react/24/outline';
 import * as XLSX from 'xlsx';
@@ -18,7 +18,7 @@ import { EfficacyReportTemplate } from '../features/reports/EfficacyReportTempla
 import { FullReportTemplate } from '../features/reports/FullReportTemplate';
 import { ImprovementReportTemplate } from '../features/reports/ImprovementReportTemplate';
 import { SetupSection } from '../features/setup/SetupSection';
-import { translations } from '../i18n/translations';
+import { translatorFor } from '../i18n';
 import { SaveStatusBadge } from '../shared/components/SaveStatusBadge';
 import { TutorialModal } from '../shared/components/TutorialModal';
 import { WarningModal } from '../shared/components/WarningModal';
@@ -53,10 +53,7 @@ export const App: React.FC = () => {
   }, []);
 
   const lang = state?.language || 'es';
-  const t = (key: string): string => {
-    const dict = (translations as any)[lang] || translations.es;
-    return dict[key] || (translations.es as any)[key] || key;
-  };
+  const t = useMemo(() => translatorFor(lang), [lang]);
 
   // Ejecuta una operación de IA en el backend con los datos del caso.
   const runAi = async (
@@ -257,7 +254,7 @@ export const App: React.FC = () => {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-slate-200">
         <div className="flex items-center gap-3 text-slate-500 text-[11px] font-black uppercase tracking-widest">
-          <ArrowPathIcon className="w-5 h-5 animate-spin" /> {lang === 'es' ? 'Cargando caso...' : 'Loading case...'}
+          <ArrowPathIcon className="w-5 h-5 animate-spin" /> {t('loadingCase')}
         </div>
       </div>
     );
@@ -313,7 +310,7 @@ export const App: React.FC = () => {
             <BookOpenIcon className="w-3.5 h-3.5" /> {t('tutorial')}
           </button>
           <button onClick={toggleLanguage} className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.01]">
-             {lang === 'es' ? 'Switch to English' : 'Cambiar a Español'}
+             {t('cambiarAEspaOl')}
           </button>
           <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest pt-0.5 px-1">{t('projectMgmt')}</p>
           <div className="grid grid-cols-2 gap-1.5">
@@ -347,7 +344,7 @@ export const App: React.FC = () => {
              <div className="flex items-center gap-2 pl-4 border-l border-slate-200">
                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest truncate max-w-[160px]" title={user?.username}>{user?.displayName}</span>
                <button onClick={() => void logout()} className="px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors">
-                 {lang === 'es' ? 'Cerrar sesión' : 'Sign out'}
+                 {t('signOut')}
                </button>
              </div>
            </div>

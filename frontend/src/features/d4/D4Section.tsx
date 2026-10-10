@@ -149,7 +149,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
               merged.push({ 
                 id: `h-manual-${Date.now()}-${cat.replace(/\s+/g, '')}-${merged.length}`, 
                 category: cat, 
-                text: state.language === 'es' ? "Causa potencial adicional..." : "Additional potential cause..." 
+                text: t('additionalPotentialCause') 
               });
             }
             
@@ -288,7 +288,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
 
   const generateSyntheticCause = () => {
     const fixedIds = state.d4.fixedRootCauseIds || [];
-    if (fixedIds.length === 0) return alert(state.language === 'es' ? 'Fije al menos una causa raíz.' : 'Fix at least one root cause.');
+    if (fixedIds.length === 0) return alert(t('fixAtLeastOneRootCause'));
     const rootCauses = fixedIds.map(id => { 
       const analysis = state.d4.fiveWhysHistory?.find(a => a.id === id);
       return analysis?.systemicRootCause || t('unknownCause'); 
@@ -310,7 +310,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
 
   const generateAllActions = () => {
     const fixedIds = [...(state.d4.fixedRootCauseIds || [])];
-    if (fixedIds.length === 0) return alert(state.language === 'es' ? 'Fije al menos una causa raíz.' : 'Fix at least one root cause.');
+    if (fixedIds.length === 0) return alert(t('fixAtLeastOneRootCause'));
     
     const causes = fixedIds.map(id => {
       if (id.startsWith('synth-')) return { id, text: state.d4.syntheticCause?.text };
@@ -331,9 +331,9 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
               action: act, 
               evidenceHow: "",
               evidenceDate: defaultDate,
-              evidenceResponsible: state.language === 'es' ? "Líder de Área" : "Area Leader",
+              evidenceResponsible: t('areaLeader'),
               verificationHow: "",
-              responsible: state.language === 'es' ? "Líder de Área" : "Area Leader", 
+              responsible: t('areaLeader'), 
               timeframe: defaultDate, 
               isFixed: false 
             })); 
@@ -401,13 +401,13 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                             <ExclamationTriangleIcon className={`w-4 h-4 ${isConfirmed ? 'text-white' : 'text-slate-500'}`} />
                           </div>
                           <div className="space-y-0">
-                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{state.language === 'es' ? 'Hipótesis' : 'Hypothesis'}</p>
+                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest">{t('hypothesis')}</p>
                             <h4 className="text-[10px] font-black text-slate-900 uppercase leading-tight line-clamp-1">{diag.cause}</h4>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{state.language === 'es' ? 'Evidencia' : 'Evidence'}</p>
+                            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{t('evidence')}</p>
                             <div className="flex items-center gap-1.5">
                               <div className="w-12 h-1 bg-slate-200 rounded-full overflow-hidden">
                                 <div className={`h-full transition-all duration-700 ${isConfirmed ? 'bg-red-600' : 'bg-blue-600'}`} style={{ width: `${noPercentage}%` }}></div>
@@ -432,7 +432,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                                 }}
                                 className={`w-12 py-1 rounded-md text-[8px] font-black uppercase border transition-all ${checks[qIdx] === 'yes' ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm' : 'bg-white text-slate-300 border-slate-50 hover:border-emerald-200 hover:text-emerald-500'}`}
                               >
-                                {state.language === 'es' ? 'Sí' : 'Yes'}
+                                {t('yes')}
                               </button>
                               <button
                                 onClick={() => {
@@ -488,7 +488,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
           {experimentallyConfirmedHypotheses.length === 0 ? (
             <div className="text-center py-20 opacity-40">
               <QuestionMarkCircleIcon className="w-7 h-7 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,0.8)]" />
-              <p className="text-xs font-black uppercase tracking-widest">{state.language === 'es' ? 'No hay causas confirmadas experimentalmente.' : 'No experimentally confirmed causes.'}</p>
+              <p className="text-xs font-black uppercase tracking-widest">{t('noExperimentallyConfirmedCauses')}</p>
             </div>
           ) : (
             <div className="space-y-12 h-auto flex flex-col">
@@ -502,12 +502,10 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                   <div>
                     <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
                       <SparklesIcon className="w-4 h-4 text-purple-600" />
-                      {state.language === 'es' ? 'Conclusiones del Gemba' : 'Gemba Conclusions'}
+                      {t('gembaConclusions')}
                     </h4>
                     <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mt-1">
-                      {state.language === 'es' 
-                        ? 'Sube notas o reportes del Gemba para entrenar y guiar el análisis de los 5 Porqués.' 
-                        : 'Upload Gemba notes or reports to train and guide the 5 Whys analysis.'}
+                      {t('uploadGembaNotesOrReportsTo')}
                     </p>
                   </div>
                   
@@ -526,15 +524,15 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                     >
                       <PaperClipIcon className="w-4 h-4" />
                       {isExtractingGemba 
-                        ? (state.language === 'es' ? 'Extrayendo...' : 'Extracting...') 
-                        : (state.language === 'es' ? 'Cargar Documento' : 'Upload Document')}
+                        ? (t('extracting')) 
+                        : (t('uploadDocument'))}
                     </button>
                     {state.d4.gembaConclusions && (
                       <button
                         onClick={() => setState((p: any) => ({ ...p, d4: { ...p.d4, gembaConclusions: "" } }))}
                         className="px-3 py-2 bg-red-50 text-red-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-all border border-red-100"
                       >
-                        {state.language === 'es' ? 'Limpiar' : 'Clear'}
+                        {t('clear')}
                       </button>
                     )}
                   </div>
@@ -543,9 +541,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                 <textarea
                   value={state.d4.gembaConclusions || ""}
                   onChange={(e) => setState((p: any) => ({ ...p, d4: { ...p.d4, gembaConclusions: e.target.value } }))}
-                  placeholder={state.language === 'es' 
-                    ? "Escribe o pega aquí el resumen, las notas, evidencias o conclusiones del Gemba para enriquecer las respuestas de la IA..." 
-                    : "Write or paste the Gemba summary, notes, evidence, or conclusions here to enrich the AI answers..."}
+                  placeholder={t('writeOrPasteTheGembaSummary')}
                   className="w-full bg-slate-50 border border-slate-200 rounded-[1.5rem] p-4 text-xs font-semibold focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 outline-none transition-all placeholder-slate-400 min-h-[100px]"
                 />
               </div>
@@ -559,7 +555,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                     <div key={diag.hypothesisId} className="animate-scale-up p-8 bg-white border border-slate-200 rounded-[2.5rem] shadow-sm relative h-auto flex flex-col">
                       <div className="flex justify-between items-start mb-6">
                         <h5 className="text-[10px] font-black text-blue-600 uppercase tracking-widest pr-12">
-                          {state.language === 'es' ? 'Causa Confirmada' : 'Confirmed Cause'}: 
+                          {t('confirmedCause')}: 
                           <span className="text-slate-900 ml-2">{diag.cause}</span>
                         </h5>
                         <div className="flex items-center gap-4">
@@ -569,7 +565,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                             disabled={isLoading}
                             className="px-4 py-2 bg-blue-600 text-white text-[9px] font-black rounded-lg uppercase tracking-widest shadow-md hover:bg-blue-700 transition-all disabled:opacity-50"
                           >
-                            {isLoading ? '...' : analysis ? (state.language === 'es' ? 'Regenerar' : 'Regenerate') : t('run5WhysIA')}
+                            {isLoading ? '...' : analysis ? (t('regenerate')) : t('run5WhysIA')}
                           </button>
                           
                           <div className="flex items-center gap-2 bg-red-50 p-2 rounded-xl border border-red-100">
@@ -578,7 +574,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                               checked={confirmedDeletes[diag.hypothesisId] || false}
                               onChange={(e) => setConfirmedDeletes(prev => ({ ...prev, [diag.hypothesisId]: e.target.checked }))}
                               className="w-4 h-4 accent-red-600 cursor-pointer"
-                              title={state.language === 'es' ? 'Confirmar para borrar' : 'Confirm to delete'}
+                              title={t('confirmToDelete')}
                             />
                             <button 
                               onClick={() => {
@@ -590,12 +586,12 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                                     return next;
                                   });
                                 } else {
-                                  alert(state.language === 'es' ? 'Marque la casilla para confirmar el borrado.' : 'Check the box to confirm deletion.');
+                                  alert(t('checkTheBoxToConfirmDeletion'));
                                 }
                               }}
                               className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${confirmedDeletes[diag.hypothesisId] ? 'bg-red-600 text-white shadow-md' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                             >
-                              {state.language === 'es' ? 'Borrar' : 'Delete'}
+                              {t('delete')}
                             </button>
                           </div>
                         </div>
@@ -608,7 +604,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
               {(state.d4.fiveWhysHistory || []).length > 0 && (
                 <div className="mt-12 flex justify-end pt-8 border-t border-slate-200">
                   <button onClick={() => setStep(4)} className="px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-black transition-all flex items-center gap-3 active:scale-[0.95]">
-                    {state.language === 'es' ? 'Ver Análisis de Causa Raíz' : 'View Root Cause Analysis'} <ArrowPathIcon className="w-5 h-5" />
+                    {t('viewRootCauseAnalysis')} <ArrowPathIcon className="w-5 h-5" />
                   </button>
                 </div>
               )}
@@ -638,7 +634,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                       onChange={(e) => setConfirmedDeletes(prev => ({ ...prev, all: e.target.checked }))}
                       className="w-4 h-4 accent-red-600"
                     />
-                    <span className="text-[8px] font-black text-red-700 uppercase tracking-widest">{state.language === 'es' ? 'Confirmar Todo' : 'Confirm All'}</span>
+                    <span className="text-[8px] font-black text-red-700 uppercase tracking-widest">{t('confirmAll')}</span>
                   </label>
                   <button 
                     onClick={() => {
@@ -646,12 +642,12 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                         handleDeleteAllAnalyses();
                         setConfirmedDeletes(prev => ({ ...prev, all: false }));
                       } else {
-                        alert(state.language === 'es' ? 'Marque la casilla para confirmar el borrado masivo.' : 'Check the box to confirm mass deletion.');
+                        alert(t('checkTheBoxToConfirmMass'));
                       }
                     }}
                     className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${confirmedDeletes['all'] ? 'bg-red-600 text-white shadow-lg' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                   >
-                    {state.language === 'es' ? 'Borrar Todo' : 'Delete All'}
+                    {t('deleteAll')}
                   </button>
                 </div>
               )}
@@ -664,7 +660,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                   <div key={analysis.id} className={`p-8 rounded-[2.5rem] border-2 transition-all h-auto flex flex-col ${isFixed ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-100 bg-white'}`}>
                     <div className="flex justify-between items-start mb-8">
                       <div className="space-y-1">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{state.language === 'es' ? 'Origen' : 'Origin'}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t('origin')}</p>
                         <h4 className="text-sm font-bold text-slate-700 italic">{analysis.targetCause}</h4>
                       </div>
                       <div className="flex items-center gap-3">
@@ -672,7 +668,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                           onClick={() => toggleFixedRootCause(analysis.id)}
                           className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md active:scale-[0.95] ${isFixed ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-slate-900 text-white hover:bg-black'}`}
                         >
-                          {isFixed ? (state.language === 'es' ? 'Fijado' : 'Fixed') : t('fix')}
+                          {isFixed ? (t('fixed')) : t('fix')}
                         </button>
                       </div>
                     </div>
@@ -715,7 +711,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                           onChange={(e) => setConfirmedDeletes(prev => ({ ...prev, [analysis.id]: e.target.checked }))}
                           className="w-5 h-5 accent-red-600 cursor-pointer"
                         />
-                        <span className="text-[9px] font-black text-red-700 uppercase tracking-widest">{state.language === 'es' ? 'Confirmar Borrado' : 'Confirm Delete'}</span>
+                        <span className="text-[9px] font-black text-red-700 uppercase tracking-widest">{t('confirmDelete2')}</span>
                       </div>
                       <button 
                         type="button"
@@ -728,12 +724,12 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                               return next;
                             });
                           } else {
-                            alert(state.language === 'es' ? 'Marque la casilla para confirmar.' : 'Check the box to confirm.');
+                            alert(t('checkTheBoxToConfirm'));
                           }
                         }}
                         className={`px-8 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 ${confirmedDeletes[analysis.id] ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                       >
-                        {state.language === 'es' ? 'Eliminar Análisis' : 'Delete Analysis'}
+                        {t('deleteAnalysis')}
                       </button>
                     </div>
                   </div>
@@ -744,7 +740,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
             {(state.d4.fixedRootCauseIds || []).length > 0 && (
               <div className="mt-12 flex justify-end pt-8 border-t border-slate-200">
                 <button onClick={() => setStep(5)} className="px-12 py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-xl hover:bg-black transition-all flex items-center gap-3 active:scale-[0.95]">
-                  {state.language === 'es' ? 'Generar Acciones' : 'Generate Actions'} <ArrowPathIcon className="w-5 h-5" />
+                  {t('generateActions')} <ArrowPathIcon className="w-5 h-5" />
                 </button>
               </div>
             )}
@@ -781,7 +777,7 @@ export const D4Section = ({ state, setState, runAi, loading, setActiveTab, t, se
                       <div className={`p-2 rounded-lg ${isPrimary ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>{isPrimary ? <StarIcon className="w-5 h-5" /> : <Square2StackIcon className="w-5 h-5" />}</div>
                       <button onClick={() => setState((p: any) => ({ ...p, d4: { ...p.d4, primaryCauseId: id } }))} className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all ${isPrimary ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 hover:bg-blue-100'}`}>{isPrimary ? t('primary') : t('fix')}</button>
                     </div>
-                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">{state.language === 'es' ? 'Causa Raíz' : 'Root Cause'}</p>
+                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">{t('rootCauseTitle')}</p>
                     <h4 className="text-sm font-bold text-slate-800 leading-relaxed mb-6">{analysis.systemicRootCause}</h4>
                     <div className="space-y-4 mt-auto">
                       <div className="h-px bg-slate-100 w-full mb-4"></div>

@@ -123,7 +123,7 @@ export const D7Section = ({ state, setState, runAi, loading, t, setBanner }: any
                 </h1>
                 <div className="flex items-center gap-2">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    {state.language === 'es' ? 'FECHA DE GENERACIÓN' : 'GENERATION DATE'}:
+                    {t('generationDate2')}:
                   </p>
                   {viewMode === 'edit' ? (
                     <input 
@@ -243,7 +243,7 @@ export const D7Section = ({ state, setState, runAi, loading, t, setBanner }: any
                 </div>
 
                 <div className={`p-8 bg-slate-50 border border-slate-200 rounded-3xl h-auto flex flex-col transition-all ${viewMode === 'edit' ? 'ring-2 ring-slate-300 ring-offset-2 shadow-inner' : ''}`}>
-                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">7. {state.language === 'es' ? 'Verificación de la eficacia' : 'Efficacy Verification'}</h3>
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">7. {t('efficacyVerification2')}</h3>
                   <div className="space-y-3">
                     {state.d7.a3Report.efficacySteps && state.d7.a3Report.efficacySteps.length > 0 ? (
                       state.d7.a3Report.efficacySteps.map((s: EfficacyStep, idx: number) => (

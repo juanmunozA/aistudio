@@ -19,7 +19,7 @@ export const WarningModal = ({ onAccept, onDecline, t, lang, onToggleLanguage }:
             className="px-3 py-1.5 md:px-4 md:py-2 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest border border-white/30 transition-all flex items-center gap-2"
           >
             <AdjustmentsHorizontalIcon className="w-3 h-3" />
-            {lang === 'es' ? 'English' : 'Español'}
+            {t('espaOl')}
           </button>
         </div>
 
@@ -42,7 +42,7 @@ export const WarningModal = ({ onAccept, onDecline, t, lang, onToggleLanguage }:
             {showDeclineMessage && (
               <div className="mb-6 p-4 bg-red-50 border-2 border-red-100 rounded-2xl text-center animate-bounce">
                 <p className="text-xs font-bold text-red-600 uppercase tracking-wider">
-                  {lang === 'es' ? "Debe aceptar los términos para utilizar la herramienta." : "You must accept the terms to use the tool."}
+                  {t('youMustAcceptTheTermsTo')}
                 </p>
               </div>
             )}
